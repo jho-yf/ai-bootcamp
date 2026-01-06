@@ -14,3 +14,7 @@
 ## implementation plan
 
 按照 `./specs/0001-spec.md` 中的需求和设计文档，生成一份详细的实现计划，放在 `./specs/0002-implementation-plan.md` 文件中，输出为中文。
+
+## phased implementation
+
+按照 `./specs/0002-implementation-plan.md` 完整实现这个项目的 phase 1 代码。项目的根路径为 `./w1-project-alpha`。
