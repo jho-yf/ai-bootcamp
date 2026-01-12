@@ -14,6 +14,8 @@ mod services;
 mod utils;
 
 use config::Config;
+use repositories::Repositories;
+use routes::create_routes;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -43,8 +45,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     sqlx::migrate!("./migrations").run(&pool).await?;
     info!("Database migrations completed");
     
+    // 创建仓库
+    let repositories = Repositories::new(pool);
+    
     // 创建应用
     let app = Router::new()
+        .merge(create_routes(repositories))
         .layer(
             CorsLayer::new()
                 .allow_origin(Any)
