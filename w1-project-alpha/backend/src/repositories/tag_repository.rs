@@ -75,13 +75,11 @@ impl TagRepository {
         Ok(tag)
     }
 
+    /// Update a tag with partial data.
+    /// 
+    /// Only provided fields will be updated. Returns an error if the tag does not exist
+    /// or if the new name conflicts with an existing tag.
     pub async fn update(&self, id: Uuid, request: UpdateTagRequest) -> Result<Tag> {
-        // Check if tag exists
-        let existing = self.find_by_id(id).await?;
-        if existing.is_none() {
-            return Err(AppError::NotFound(format!("Tag with id {} not found", id)));
-        }
-
         // If updating name, check for duplicates
         if let Some(ref new_name) = request.name {
             if let Some(existing_tag) = self.find_by_name(new_name).await? {
@@ -107,8 +105,11 @@ impl TagRepository {
         }
 
         if updates.is_empty() {
-            // No updates, just return the existing tag
-            return Ok(existing.unwrap());
+            // No updates, fetch and return the existing tag
+            return self
+                .find_by_id(id)
+                .await?
+                .ok_or_else(|| AppError::NotFound(format!("Tag with id {} not found", id)));
         }
 
         let query = format!(
@@ -129,8 +130,8 @@ impl TagRepository {
 
         sql_query = sql_query.bind(id);
 
-        let tag = sql_query.fetch_one(&self.pool).await?;
-        Ok(tag)
+        let tag = sql_query.fetch_optional(&self.pool).await?;
+        tag.ok_or_else(|| AppError::NotFound(format!("Tag with id {} not found", id)))
     }
 
     pub async fn delete(&self, id: Uuid) -> Result<()> {

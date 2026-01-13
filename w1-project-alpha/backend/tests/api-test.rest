@@ -1,0 +1,278 @@
+### Project Alpha API Tests
+### Base URL - Update this according to your environment
+@baseUrl = http://127.0.0.1:3000
+@contentType = application/json
+
+### Variables (will be set during tests)
+@ticketId = 
+@tagId = 
+@tagId2 = 
+
+###############################################
+# Tag API Tests
+###############################################
+
+### 1. Get all tags (empty initially)
+GET {{baseUrl}}/api/tags
+
+### 2. Create first tag
+POST {{baseUrl}}/api/tags
+Content-Type: {{contentType}}
+
+{
+  "name": "urgent",
+  "color": "#FF0000"
+}
+
+### 3. Create second tag
+POST {{baseUrl}}/api/tags
+Content-Type: {{contentType}}
+
+{
+  "name": "bug",
+  "color": "#FF5733"
+}
+
+### 4. Create third tag (without color)
+POST {{baseUrl}}/api/tags
+Content-Type: {{contentType}}
+
+{
+  "name": "feature",
+  "color": null
+}
+
+### 5. Get all tags (should return 3 tags)
+GET {{baseUrl}}/api/tags
+
+### 6. Get tag by ID (use ID from response above)
+GET {{baseUrl}}/api/tags/{{tagId}}
+
+### 7. Update tag
+PUT {{baseUrl}}/api/tags/{{tagId}}
+Content-Type: {{contentType}}
+
+{
+  "name": "urgent-updated",
+  "color": "#CC0000"
+}
+
+### 8. Update tag (partial - only name)
+PUT {{baseUrl}}/api/tags/{{tagId}}
+Content-Type: {{contentType}}
+
+{
+  "name": "urgent"
+}
+
+### 9. Update tag (partial - only color)
+PUT {{baseUrl}}/api/tags/{{tagId}}
+Content-Type: {{contentType}}
+
+{
+  "color": "#FF0000"
+}
+
+### 10. Try to create duplicate tag (should fail)
+POST {{baseUrl}}/api/tags
+Content-Type: {{contentType}}
+
+{
+  "name": "urgent",
+  "color": "#FF0000"
+}
+
+### 11. Get non-existent tag (should return 404)
+GET {{baseUrl}}/api/tags/00000000-0000-0000-0000-000000000000
+
+### 12. Update non-existent tag (should return 404)
+PUT {{baseUrl}}/api/tags/00000000-0000-0000-0000-000000000000
+Content-Type: {{contentType}}
+
+{
+  "name": "test"
+}
+
+###############################################
+# Ticket API Tests
+###############################################
+
+### 13. Get all tickets (empty initially)
+GET {{baseUrl}}/api/tickets
+
+### 14. Create ticket without tags
+POST {{baseUrl}}/api/tickets
+Content-Type: {{contentType}}
+
+{
+  "title": "Fix login bug",
+  "description": "Users cannot login with email",
+  "tag_ids": null
+}
+
+### 15. Create ticket with tags (use tag IDs from above)
+POST {{baseUrl}}/api/tickets
+Content-Type: {{contentType}}
+
+{
+  "title": "Add dark mode",
+  "description": "Implement dark mode theme",
+  "tag_ids": ["{{tagId}}", "{{tagId2}}"]
+}
+
+### 16. Create ticket without description
+POST {{baseUrl}}/api/tickets
+Content-Type: {{contentType}}
+
+{
+  "title": "Update documentation",
+  "description": null,
+  "tag_ids": []
+}
+
+### 17. Get all tickets
+GET {{baseUrl}}/api/tickets
+
+### 18. Get ticket by ID (use ID from response above)
+GET {{baseUrl}}/api/tickets/{{ticketId}}
+
+### 19. Get tickets filtered by tag
+GET {{baseUrl}}/api/tickets?tag={{tagId}}
+
+### 20. Get tickets filtered by completed status
+GET {{baseUrl}}/api/tickets?completed=false
+
+### 21. Get tickets filtered by completed status (true)
+GET {{baseUrl}}/api/tickets?completed=true
+
+### 22. Search tickets by title
+GET {{baseUrl}}/api/tickets?search=bug
+
+### 23. Search tickets by title (case insensitive)
+GET {{baseUrl}}/api/tickets?search=BUG
+
+### 24. Combined filters: tag + completed + search
+GET {{baseUrl}}/api/tickets?tag={{tagId}}&completed=false&search=dark
+
+### 25. Update ticket (full update)
+PUT {{baseUrl}}/api/tickets/{{ticketId}}
+Content-Type: {{contentType}}
+
+{
+  "title": "Fix login bug - Updated",
+  "description": "Users cannot login with email - Fixed",
+  "completed": true
+}
+
+### 26. Update ticket (partial - only title)
+PUT {{baseUrl}}/api/tickets/{{ticketId}}
+Content-Type: {{contentType}}
+
+{
+  "title": "Fix login bug - Final"
+}
+
+### 27. Update ticket (partial - only description)
+PUT {{baseUrl}}/api/tickets/{{ticketId}}
+Content-Type: {{contentType}}
+
+{
+  "description": "Users cannot login with email - Resolved"
+}
+
+### 28. Update ticket (partial - only completed)
+PUT {{baseUrl}}/api/tickets/{{ticketId}}
+Content-Type: {{contentType}}
+
+{
+  "completed": false
+}
+
+### 29. Toggle ticket completed status
+PATCH {{baseUrl}}/api/tickets/{{ticketId}}/toggle
+
+### 30. Toggle ticket completed status again
+PATCH {{baseUrl}}/api/tickets/{{ticketId}}/toggle
+
+### 31. Add tag to ticket
+POST {{baseUrl}}/api/tickets/{{ticketId}}/tags/{{tagId}}
+
+### 32. Add another tag to ticket
+POST {{baseUrl}}/api/tickets/{{ticketId}}/tags/{{tagId2}}
+
+### 33. Get ticket with tags (should show 2 tags)
+GET {{baseUrl}}/api/tickets/{{ticketId}}
+
+### 34. Remove tag from ticket
+DELETE {{baseUrl}}/api/tickets/{{ticketId}}/tags/{{tagId}}
+
+### 35. Get ticket with tags (should show 1 tag)
+GET {{baseUrl}}/api/tickets/{{ticketId}}
+
+### 36. Try to add tag to non-existent ticket (should return 404)
+POST {{baseUrl}}/api/tickets/00000000-0000-0000-0000-000000000000/tags/{{tagId}}
+
+### 37. Try to remove non-existent tag from ticket (should return 404)
+DELETE {{baseUrl}}/api/tickets/{{ticketId}}/tags/00000000-0000-0000-0000-000000000000
+
+### 38. Get non-existent ticket (should return 404)
+GET {{baseUrl}}/api/tickets/00000000-0000-0000-0000-000000000000
+
+### 39. Update non-existent ticket (should return 404)
+PUT {{baseUrl}}/api/tickets/00000000-0000-0000-0000-000000000000
+Content-Type: {{contentType}}
+
+{
+  "title": "Test"
+}
+
+### 40. Delete non-existent ticket (should return 404)
+DELETE {{baseUrl}}/api/tickets/00000000-0000-0000-0000-000000000000
+
+### 41. Toggle non-existent ticket (should return 404)
+PATCH {{baseUrl}}/api/tickets/00000000-0000-0000-0000-000000000000/toggle
+
+###############################################
+# Validation Tests
+###############################################
+
+### 42. Create ticket with empty title (should fail validation)
+POST {{baseUrl}}/api/tickets
+Content-Type: {{contentType}}
+
+{
+  "title": "",
+  "description": "Test"
+}
+
+### 43. Create tag with empty name (should fail validation)
+POST {{baseUrl}}/api/tags
+Content-Type: {{contentType}}
+
+{
+  "name": "",
+  "color": "#FF0000"
+}
+
+### 44. Create ticket with invalid JSON (should return 400)
+POST {{baseUrl}}/api/tickets
+Content-Type: {{contentType}}
+
+{
+  "title": "Test",
+  "description": "Test",
+  "invalid": field
+}
+
+###############################################
+# Cleanup (optional)
+###############################################
+
+### 45. Delete ticket
+DELETE {{baseUrl}}/api/tickets/{{ticketId}}
+
+### 46. Delete tag
+DELETE {{baseUrl}}/api/tags/{{tagId}}
+
+### 47. Delete another tag
+DELETE {{baseUrl}}/api/tags/{{tagId2}}

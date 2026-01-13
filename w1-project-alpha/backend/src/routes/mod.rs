@@ -1,3 +1,7 @@
+// Note: delete and put are used in route method chaining, but compiler may not detect it
+#[allow(unused_imports)]
+use axum::routing::{delete, put};
+
 use axum::{
     routing::{get, patch, post},
     Router,

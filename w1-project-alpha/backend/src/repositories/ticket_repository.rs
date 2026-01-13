@@ -14,6 +14,11 @@ impl TicketRepository {
         Self { pool }
     }
 
+    /// Find all tickets with optional filtering by tag, search term, and completed status.
+    /// 
+    /// # Performance Note
+    /// This method performs N+1 queries (one for tickets, then one per ticket for tags).
+    /// For large datasets, consider optimizing with a single JOIN query and grouping in application code.
     pub async fn find_all(
         &self,
         tag_id: Option<Uuid>,
@@ -36,7 +41,8 @@ impl TicketRepository {
             conditions.push(format!("tt.tag_id = ${}", bind_count));
         }
 
-        // Add search condition
+        // Add search condition (uses ILIKE for case-insensitive search)
+        // The GIN index on title will help optimize this query
         if search.is_some() {
             bind_count += 1;
             conditions.push(format!("t.title ILIKE ${}", bind_count));
@@ -72,6 +78,8 @@ impl TicketRepository {
         let tickets = sql_query.fetch_all(&self.pool).await?;
 
         // Fetch tags for each ticket
+        // Note: This results in N+1 queries. For better performance with large datasets,
+        // consider fetching all tags in a single query and grouping by ticket_id.
         let mut tickets_with_tags = Vec::new();
         for ticket in tickets {
             let tags = self.get_ticket_tags(ticket.id).await?;
@@ -136,13 +144,11 @@ impl TicketRepository {
         Ok(ticket)
     }
 
+    /// Update a ticket with partial data.
+    /// 
+    /// Only provided fields will be updated. The `updated_at` field is always updated.
+    /// Returns an error if the ticket does not exist.
     pub async fn update(&self, id: Uuid, request: UpdateTicketRequest) -> Result<Ticket> {
-        // Check if ticket exists
-        let existing = self.find_by_id(id).await?;
-        if existing.is_none() {
-            return Err(AppError::NotFound(format!("Ticket with id {} not found", id)));
-        }
-
         // Build dynamic update query
         let mut updates = Vec::new();
         let mut bind_count = 1;
@@ -161,8 +167,12 @@ impl TicketRepository {
         }
 
         if updates.is_empty() {
-            // No updates, just return the existing ticket
-            return Ok(existing.unwrap().ticket);
+            // No updates, fetch and return the existing ticket
+            return self
+                .find_by_id(id)
+                .await?
+                .map(|twt| twt.ticket)
+                .ok_or_else(|| AppError::NotFound(format!("Ticket with id {} not found", id)));
         }
 
         // Always update updated_at
@@ -192,8 +202,8 @@ impl TicketRepository {
         sql_query = sql_query.bind(now);
         sql_query = sql_query.bind(id);
 
-        let ticket = sql_query.fetch_one(&self.pool).await?;
-        Ok(ticket)
+        let ticket = sql_query.fetch_optional(&self.pool).await?;
+        ticket.ok_or_else(|| AppError::NotFound(format!("Ticket with id {} not found", id)))
     }
 
     pub async fn delete(&self, id: Uuid) -> Result<()> {
@@ -264,7 +274,10 @@ impl TicketRepository {
         Ok(())
     }
 
-    // Helper method to get tags for a ticket
+    /// Helper method to get tags for a ticket.
+    /// 
+    /// This method is used internally to fetch tags for tickets.
+    /// The query uses an INNER JOIN which is efficient due to the index on ticket_tags.
     async fn get_ticket_tags(&self, ticket_id: Uuid) -> Result<Vec<Tag>> {
         let tags = sqlx::query_as::<_, Tag>(
             "SELECT t.id, t.name, t.color, t.created_at
