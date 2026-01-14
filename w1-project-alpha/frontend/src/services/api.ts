@@ -12,9 +12,10 @@ import type {
 
 /**
  * API 基础 URL
- * 从环境变量读取，开发环境默认为 http://localhost:3000
+ * 从环境变量读取，开发环境使用代理（空字符串），生产环境使用完整 URL
  */
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:3000";
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 
+  (import.meta.env.DEV ? "" : "http://localhost:3000");
 
 /**
  * 创建 Axios 实例

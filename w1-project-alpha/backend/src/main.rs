@@ -2,6 +2,7 @@ use axum::Router;
 use std::net::SocketAddr;
 use tower_http::cors::{Any, CorsLayer};
 use tower_http::trace::TraceLayer;
+use axum::http::header;
 use tracing::info;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
@@ -55,7 +56,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             CorsLayer::new()
                 .allow_origin(Any)
                 .allow_methods(Any)
-                .allow_headers(Any),
+                .allow_headers([
+                    header::CONTENT_TYPE,
+                    header::AUTHORIZATION,
+                    header::ACCEPT,
+                ])
+                .expose_headers(Any),
         )
         .layer(TraceLayer::new_for_http());
     
