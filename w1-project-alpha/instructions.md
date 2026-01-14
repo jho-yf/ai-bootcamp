@@ -31,3 +31,15 @@
 ## phase 3 implementation
 
 按照 `./specs/0002-implementation-plan.md` 完整实现这个项目的 phase 3 计划。
+
+## frontend phase 1 implementation
+
+按照 `./specs/0002-implementation-plan.md` 完整实现这个项目前端的 phase 1 计划。
+
+## frontend phase 2 implementation
+
+按照 `./specs/0002-implementation-plan.md` 完整实现项目前端的 phase 2 计划。
+
+## frontend phase 3 implementation
+
+按照 `./specs/0002-implementation-plan.md` 完整实现项目前端的 phase 3 计划。
