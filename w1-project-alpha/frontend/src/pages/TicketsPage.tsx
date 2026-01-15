@@ -183,9 +183,9 @@ export function TicketsPage() {
   };
 
   return (
-    <div className="flex h-screen overflow-hidden">
+    <div className="flex h-screen overflow-hidden bg-background">
       {/* 侧边栏 */}
-      <div className="w-64 shrink-0">
+      <div className="w-80 shrink-0 border-r border-border/30 bg-card/40 backdrop-blur-xl">
         <Sidebar
           tags={tags}
           selectedTagId={selectedTagId}
@@ -198,57 +198,74 @@ export function TicketsPage() {
       {/* 主内容区 */}
       <div className="flex-1 flex flex-col overflow-hidden">
         {/* 顶部工具栏 */}
-        <div className="border-b p-4 bg-background">
-          <div className="flex items-center justify-between gap-4">
-            <div className="flex-1 max-w-md">
-              <SearchBar value={searchQuery} onChange={setSearchQuery} />
+        <div className="border-b border-border/30 bg-card/60 backdrop-blur-xl sticky top-0 z-10">
+          <div className="max-w-[1600px] mx-auto px-12 py-8">
+            <div className="flex items-center justify-between gap-8">
+              <div className="flex-1 max-w-2xl">
+                <SearchBar value={searchQuery} onChange={setSearchQuery} />
+              </div>
+              <Button 
+                onClick={() => setTicketFormOpen(true)} 
+                size="lg"
+                className="shadow-sm hover:shadow-md transition-all duration-300"
+              >
+                <Plus className="h-5 w-5 mr-2.5" />
+                创建 Ticket
+              </Button>
             </div>
-            <Button onClick={() => setTicketFormOpen(true)}>
-              <Plus className="h-4 w-4 mr-2" />
-              创建 Ticket
-            </Button>
           </div>
         </div>
 
         {/* 筛选面板 */}
-        <div className="border-b p-4 bg-muted/50">
-          <FilterPanel
-            tags={tags}
-            selectedTagId={selectedTagId}
-            showCompleted={showCompleted}
-            onTagChange={setSelectedTagId}
-            onCompletedChange={setShowCompleted}
-          />
+        <div className="border-b border-border/30 bg-muted/20 backdrop-blur-sm">
+          <div className="max-w-[1600px] mx-auto px-12 py-6">
+            <FilterPanel
+              tags={tags}
+              selectedTagId={selectedTagId}
+              showCompleted={showCompleted}
+              onTagChange={setSelectedTagId}
+              onCompletedChange={setShowCompleted}
+            />
+          </div>
         </div>
 
         {/* Ticket 列表 */}
-        <div className="flex-1 overflow-y-auto p-4">
-          {ticketsLoading || tagsLoading ? (
-            <div className="flex items-center justify-center h-64">
-              <p className="text-muted-foreground">加载中...</p>
-            </div>
-          ) : tickets.length === 0 ? (
-            <div className="flex flex-col items-center justify-center h-64">
-              <p className="text-muted-foreground mb-4">暂无 Ticket</p>
-              <Button onClick={() => setTicketFormOpen(true)}>
-                <Plus className="h-4 w-4 mr-2" />
-                创建第一个 Ticket
-              </Button>
-            </div>
-          ) : (
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-              {tickets.map((ticket) => (
-                <TicketCard
-                  key={ticket.id}
-                  ticket={ticket}
-                  onToggleCompleted={handleToggleCompleted}
-                  onEdit={handleEditTicket}
-                  onDelete={handleDeleteTicket}
-                  onTagClick={handleTagClick}
-                />
-              ))}
-            </div>
-          )}
+        <div className="flex-1 overflow-y-auto">
+          <div className="max-w-[1600px] mx-auto px-12 py-12">
+            {ticketsLoading || tagsLoading ? (
+              <div className="flex items-center justify-center h-[60vh]">
+                <div className="text-center">
+                  <div className="inline-block h-10 w-10 animate-spin rounded-full border-[3px] border-solid border-primary/30 border-t-primary mb-6"></div>
+                  <p className="text-muted-foreground text-[17px] font-medium">加载中...</p>
+                </div>
+              </div>
+            ) : tickets.length === 0 ? (
+              <div className="flex flex-col items-center justify-center h-[60vh]">
+                <p className="text-muted-foreground mb-8 text-[19px] font-medium">暂无 Ticket</p>
+                <Button 
+                  onClick={() => setTicketFormOpen(true)} 
+                  size="lg"
+                  className="shadow-sm hover:shadow-md transition-all duration-300"
+                >
+                  <Plus className="h-5 w-5 mr-2.5" />
+                  创建第一个 Ticket
+                </Button>
+              </div>
+            ) : (
+              <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
+                {tickets.map((ticket) => (
+                  <TicketCard
+                    key={ticket.id}
+                    ticket={ticket}
+                    onToggleCompleted={handleToggleCompleted}
+                    onEdit={handleEditTicket}
+                    onDelete={handleDeleteTicket}
+                    onTagClick={handleTagClick}
+                  />
+                ))}
+              </div>
+            )}
+          </div>
         </div>
       </div>
 

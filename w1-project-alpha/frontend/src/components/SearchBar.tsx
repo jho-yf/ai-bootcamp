@@ -38,13 +38,13 @@ export function SearchBar({
 
   return (
     <div className={cn("relative", className)}>
-      <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+      <Search className="absolute left-5 top-1/2 transform -translate-y-1/2 h-5 w-5 text-muted-foreground pointer-events-none transition-colors duration-300" />
       <Input
         type="text"
         placeholder={placeholder}
         value={localValue}
         onChange={(e) => setLocalValue(e.target.value)}
-        className="pl-9"
+        className="pl-14 h-14 text-[17px] bg-background/90 backdrop-blur-xl border-border/50 rounded-2xl shadow-sm hover:shadow-md focus-visible:shadow-lg transition-all duration-300"
       />
     </div>
   );

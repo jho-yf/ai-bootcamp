@@ -16,6 +16,7 @@ import { Label } from "./ui/label";
 import { TagSelector } from "./TagSelector";
 import { Checkbox } from "./ui/checkbox";
 import { Textarea } from "./ui/textarea";
+import { cn } from "@/lib/utils";
 import type { TicketWithTags, CreateTicketRequest, UpdateTicketRequest, Tag } from "@/types";
 
 const ticketSchema = z.object({
@@ -110,34 +111,38 @@ export function TicketForm({
               : "修改 Ticket 信息"}
           </DialogDescription>
         </DialogHeader>
-        <form onSubmit={handleSubmit(handleFormSubmit)} className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="title">
+        <form onSubmit={handleSubmit(handleFormSubmit)} className="space-y-6">
+          <div className="space-y-3">
+            <Label htmlFor="title" className="text-[15px] font-semibold tracking-[-0.01em]">
               标题 <span className="text-destructive">*</span>
             </Label>
             <Input
               id="title"
               {...register("title")}
               placeholder="输入 Ticket 标题"
-              className={errors.title ? "border-destructive" : ""}
+              className={cn(
+                "h-12 text-[15px] rounded-xl",
+                errors.title ? "border-destructive focus-visible:ring-destructive/50" : ""
+              )}
             />
             {errors.title && (
-              <p className="text-sm text-destructive">{errors.title.message}</p>
+              <p className="text-[14px] text-destructive font-medium">{errors.title.message}</p>
             )}
           </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="description">描述</Label>
+          <div className="space-y-3">
+            <Label htmlFor="description" className="text-[15px] font-semibold tracking-[-0.01em]">描述</Label>
             <Textarea
               id="description"
               {...register("description")}
               placeholder="输入 Ticket 描述（可选）"
-              rows={4}
+              rows={5}
+              className="text-[15px] rounded-xl resize-none"
             />
           </div>
 
-          <div className="space-y-2">
-            <Label>标签</Label>
+          <div className="space-y-3">
+            <Label className="text-[15px] font-semibold tracking-[-0.01em]">标签</Label>
             <TagSelector
               tags={tags}
               selectedTagIds={selectedTagIds}
@@ -146,28 +151,30 @@ export function TicketForm({
           </div>
 
           {mode === "edit" && (
-            <div className="flex items-center space-x-2">
+            <div className="flex items-center space-x-3 p-4 rounded-xl bg-muted/50">
               <Checkbox
                 id="completed"
                 checked={watch("completed") || false}
                 onCheckedChange={(checked) => setValue("completed", checked === true)}
+                className="rounded-lg"
               />
-              <Label htmlFor="completed" className="cursor-pointer">
+              <Label htmlFor="completed" className="cursor-pointer text-[15px] font-medium">
                 已完成
               </Label>
             </div>
           )}
 
-          <DialogFooter>
+          <DialogFooter className="pt-4">
             <Button
               type="button"
               variant="outline"
               onClick={() => onOpenChange(false)}
               disabled={isSubmitting}
+              className="h-11 px-6 rounded-xl"
             >
               取消
             </Button>
-            <Button type="submit" disabled={isSubmitting}>
+            <Button type="submit" disabled={isSubmitting} className="h-11 px-6 rounded-xl">
               {isSubmitting ? "保存中..." : "保存"}
             </Button>
           </DialogFooter>

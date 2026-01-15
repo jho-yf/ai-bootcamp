@@ -43,3 +43,7 @@
 ## frontend phase 3 implementation
 
 按照 `./specs/0002-implementation-plan.md` 完整实现项目前端的 phase 3 计划。
+
+## 优化 UI
+
+按照 apple website 的风格，think ultra hard，优化 UI 和 UX

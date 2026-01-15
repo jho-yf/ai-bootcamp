@@ -26,14 +26,15 @@ export function FilterPanel({
   className,
 }: FilterPanelProps) {
   return (
-    <div className={cn("flex flex-col gap-4 p-4 border rounded-lg bg-card", className)}>
-      <div className="space-y-2">
-        <Label>完成状态</Label>
-        <div className="flex gap-2">
+    <div className={cn("flex flex-row items-center gap-10", className)}>
+      <div className="flex items-center gap-4">
+        <Label className="text-[15px] font-semibold text-foreground tracking-[-0.01em]">完成状态</Label>
+        <div className="flex gap-2.5">
           <Button
             variant={showCompleted === null ? "default" : "outline"}
             size="sm"
             onClick={() => onCompletedChange(null)}
+            className="h-10 px-5 text-[14px] font-medium rounded-xl transition-all duration-300"
           >
             全部
           </Button>
@@ -41,6 +42,7 @@ export function FilterPanel({
             variant={showCompleted === true ? "default" : "outline"}
             size="sm"
             onClick={() => onCompletedChange(true)}
+            className="h-10 px-5 text-[14px] font-medium rounded-xl transition-all duration-300"
           >
             已完成
           </Button>
@@ -48,22 +50,23 @@ export function FilterPanel({
             variant={showCompleted === false ? "default" : "outline"}
             size="sm"
             onClick={() => onCompletedChange(false)}
+            className="h-10 px-5 text-[14px] font-medium rounded-xl transition-all duration-300"
           >
             未完成
           </Button>
         </div>
       </div>
 
-      <div className="space-y-2">
-        <Label>标签筛选</Label>
+      <div className="flex items-center gap-4">
+        <Label className="text-[15px] font-semibold text-foreground tracking-[-0.01em]">标签筛选</Label>
         <Select
           value={selectedTagId || "all"}
           onValueChange={(value) => onTagChange(value === "all" ? null : value)}
         >
-          <SelectTrigger>
+          <SelectTrigger className="w-[220px] h-10 text-[14px] rounded-xl border-border/50 hover:border-border transition-all duration-300">
             <SelectValue placeholder="选择标签" />
           </SelectTrigger>
-          <SelectContent>
+          <SelectContent className="rounded-xl">
             <SelectItem value="all">全部标签</SelectItem>
             {tags.map((tag) => (
               <SelectItem key={tag.id} value={tag.id}>
