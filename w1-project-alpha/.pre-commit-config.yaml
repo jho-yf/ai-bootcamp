@@ -1,0 +1,76 @@
+# Pre-commit hooks configuration
+# See https://pre-commit.com for more information
+
+repos:
+  # General file checks
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v6.0.0
+    hooks:
+      - id: trailing-whitespace
+        exclude: '\.(md|lock)$'
+      - id: end-of-file-fixer
+      - id: check-yaml
+      - id: check-json
+        exclude: 'tsconfig.*\.json$'  # TypeScript config files support comments
+      - id: check-toml
+      - id: check-added-large-files
+        args: ['--maxkb=1000']
+      - id: check-merge-conflict
+      - id: check-case-conflict
+      - id: mixed-line-ending
+        args: ['--fix=lf']
+
+  # Rust hooks
+  - repo: local
+    hooks:
+      - id: cargo-fmt
+        name: cargo fmt
+        entry: bash
+        args: ['-c', 'ROOT=$(git rev-parse --show-toplevel); if [ -d "$ROOT/w1-project-alpha/backend" ]; then cd "$ROOT/w1-project-alpha/backend" && cargo fmt --all -- --check; elif [ -d "$ROOT/backend" ]; then cd "$ROOT/backend" && cargo fmt --all -- --check; else echo "Backend directory not found, skipping"; fi']
+        language: system
+        types: [rust]
+        pass_filenames: false
+        always_run: true
+      - id: cargo-clippy
+        name: cargo clippy
+        entry: bash
+        args: ['-c', 'ROOT=$(git rev-parse --show-toplevel); if [ -d "$ROOT/w1-project-alpha/backend" ]; then cd "$ROOT/w1-project-alpha/backend" && cargo clippy --all-targets --all-features -- -D warnings; elif [ -d "$ROOT/backend" ]; then cd "$ROOT/backend" && cargo clippy --all-targets --all-features -- -D warnings; else echo "Backend directory not found, skipping"; fi']
+        language: system
+        types: [rust]
+        pass_filenames: false
+        always_run: true
+
+  # TypeScript/JavaScript hooks
+  - repo: local
+    hooks:
+      - id: eslint
+        name: eslint
+        entry: bash
+        args: ['-c', 'ROOT=$(git rev-parse --show-toplevel); if [ -d "$ROOT/w1-project-alpha/frontend" ]; then cd "$ROOT/w1-project-alpha/frontend" && npm run lint -- --fix; elif [ -d "$ROOT/frontend" ]; then cd "$ROOT/frontend" && npm run lint -- --fix; else echo "Frontend directory not found, skipping"; fi']
+        language: system
+        types: [file]
+        files: ^(w1-project-alpha/)?frontend/.*\.(ts|tsx|js|jsx)$
+        exclude: ^((w1-project-alpha/)?frontend/dist|(w1-project-alpha/)?frontend/node_modules|(w1-project-alpha/)?frontend/.*\.config\.(js|ts))/
+        pass_filenames: false
+        always_run: true
+
+      - id: typescript-check
+        name: TypeScript type check
+        entry: bash
+        args: ['-c', 'ROOT=$(git rev-parse --show-toplevel); if [ -d "$ROOT/w1-project-alpha/frontend" ]; then cd "$ROOT/w1-project-alpha/frontend" && npx tsc --noEmit; elif [ -d "$ROOT/frontend" ]; then cd "$ROOT/frontend" && npx tsc --noEmit; else echo "Frontend directory not found, skipping"; fi']
+        language: system
+        types: [file]
+        files: ^(w1-project-alpha/)?frontend/.*\.(ts|tsx)$
+        exclude: ^((w1-project-alpha/)?frontend/dist|(w1-project-alpha/)?frontend/node_modules|(w1-project-alpha/)?frontend/.*\.config\.(js|ts))/
+        pass_filenames: false
+        always_run: true
+
+      - id: prettier
+        name: prettier
+        entry: bash
+        args: ['-c', 'ROOT=$(git rev-parse --show-toplevel); FRONTEND_DIR="$ROOT/w1-project-alpha/frontend"; if [ ! -d "$FRONTEND_DIR" ]; then FRONTEND_DIR="$ROOT/frontend"; fi; if [ -d "$FRONTEND_DIR" ]; then cd "$FRONTEND_DIR" && for file in "$@"; do REL_FILE="${file#$ROOT/}"; REL_FILE="${REL_FILE#w1-project-alpha/frontend/}"; if [ -f "src/$REL_FILE" ]; then npx prettier --write "src/$REL_FILE"; elif [ -f "$REL_FILE" ]; then npx prettier --write "$REL_FILE"; fi; done; else echo "Frontend directory not found, skipping"; fi']
+        language: system
+        types: [file]
+        files: ^(w1-project-alpha/)?frontend/.*\.(ts|tsx|js|jsx|json|css|scss|md|yml|yaml)$
+        exclude: ^((w1-project-alpha/)?frontend/dist|(w1-project-alpha/)?frontend/node_modules|(w1-project-alpha/)?frontend/package-lock\.json|(w1-project-alpha/)?frontend/.*\.config\.(js|ts))/
+        pass_filenames: true
