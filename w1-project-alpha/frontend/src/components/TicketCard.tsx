@@ -65,7 +65,7 @@ export function TicketCard({
         </CardContent>
       )}
       <CardFooter className="flex flex-col gap-5 pt-0 pb-6">
-        {ticket.tags.length > 0 && (
+        {ticket.tags && ticket.tags.length > 0 && (
           <div className="flex flex-wrap gap-2.5 w-full">
             {ticket.tags.map((tag) => (
               <TagBadge

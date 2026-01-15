@@ -45,7 +45,12 @@ export const useTicketStore = create<TicketState>()(
         set({ loading: true, error: null });
         try {
           const tickets = await ticketApi.getTickets(query);
-          set({ tickets, loading: false });
+          // 确保所有 ticket 都有 tags 字段
+          const ticketsWithTags = tickets.map((ticket) => ({
+            ...ticket,
+            tags: ticket.tags || [],
+          }));
+          set({ tickets: ticketsWithTags, loading: false });
         } catch (error: any) {
           const errorMessage = error.response?.data?.error || error.message || "获取 Ticket 列表失败";
           set({ error: errorMessage, loading: false });
@@ -57,8 +62,13 @@ export const useTicketStore = create<TicketState>()(
         set({ loading: true, error: null });
         try {
           const ticket = await ticketApi.getTicket(id);
+          // 确保 tags 字段存在
+          const ticketWithTags: TicketWithTags = {
+            ...ticket,
+            tags: ticket.tags || [],
+          };
           set({ loading: false });
-          return ticket;
+          return ticketWithTags;
         } catch (error: any) {
           const errorMessage = error.response?.data?.error || error.message || "获取 Ticket 失败";
           set({ error: errorMessage, loading: false });
@@ -71,11 +81,16 @@ export const useTicketStore = create<TicketState>()(
         set({ loading: true, error: null });
         try {
           const newTicket = await ticketApi.createTicket(data);
+          // 确保 tags 字段存在
+          const ticketWithTags: TicketWithTags = {
+            ...newTicket,
+            tags: newTicket.tags || [],
+          };
           set((state) => ({
-            tickets: [newTicket, ...state.tickets],
+            tickets: [ticketWithTags, ...state.tickets],
             loading: false,
           }));
-          return newTicket;
+          return ticketWithTags;
         } catch (error: any) {
           const errorMessage = error.response?.data?.error || error.message || "创建 Ticket 失败";
           set({ error: errorMessage, loading: false });
@@ -88,11 +103,16 @@ export const useTicketStore = create<TicketState>()(
         set({ loading: true, error: null });
         try {
           const updatedTicket = await ticketApi.updateTicket(id, data);
+          // 确保 tags 字段存在
+          const ticketWithTags: TicketWithTags = {
+            ...updatedTicket,
+            tags: updatedTicket.tags || [],
+          };
           set((state) => ({
-            tickets: state.tickets.map((t) => (t.id === id ? updatedTicket : t)),
+            tickets: state.tickets.map((t) => (t.id === id ? ticketWithTags : t)),
             loading: false,
           }));
-          return updatedTicket;
+          return ticketWithTags;
         } catch (error: any) {
           const errorMessage = error.response?.data?.error || error.message || "更新 Ticket 失败";
           set({ error: errorMessage, loading: false });
@@ -122,8 +142,13 @@ export const useTicketStore = create<TicketState>()(
         set({ loading: true, error: null });
         try {
           const updatedTicket = await ticketApi.toggleCompleted(id);
+          // 确保 tags 字段存在
+          const ticketWithTags: TicketWithTags = {
+            ...updatedTicket,
+            tags: updatedTicket.tags || [],
+          };
           set((state) => ({
-            tickets: state.tickets.map((t) => (t.id === id ? updatedTicket : t)),
+            tickets: state.tickets.map((t) => (t.id === id ? ticketWithTags : t)),
             loading: false,
           }));
           return true;
@@ -141,8 +166,13 @@ export const useTicketStore = create<TicketState>()(
           await ticketApi.addTag(ticketId, tagId);
           // 重新获取 Ticket 以更新标签列表
           const updatedTicket = await ticketApi.getTicket(ticketId);
+          // 确保 tags 字段存在
+          const ticketWithTags: TicketWithTags = {
+            ...updatedTicket,
+            tags: updatedTicket.tags || [],
+          };
           set((state) => ({
-            tickets: state.tickets.map((t) => (t.id === ticketId ? updatedTicket : t)),
+            tickets: state.tickets.map((t) => (t.id === ticketId ? ticketWithTags : t)),
             loading: false,
           }));
           return true;
@@ -160,8 +190,13 @@ export const useTicketStore = create<TicketState>()(
           await ticketApi.removeTag(ticketId, tagId);
           // 重新获取 Ticket 以更新标签列表
           const updatedTicket = await ticketApi.getTicket(ticketId);
+          // 确保 tags 字段存在
+          const ticketWithTags: TicketWithTags = {
+            ...updatedTicket,
+            tags: updatedTicket.tags || [],
+          };
           set((state) => ({
-            tickets: state.tickets.map((t) => (t.id === ticketId ? updatedTicket : t)),
+            tickets: state.tickets.map((t) => (t.id === ticketId ? ticketWithTags : t)),
             loading: false,
           }));
           return true;
