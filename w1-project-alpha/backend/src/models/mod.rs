@@ -1,5 +1,5 @@
-pub mod ticket;
 pub mod tag;
+pub mod ticket;
 
-pub use ticket::*;
 pub use tag::*;
+pub use ticket::*;

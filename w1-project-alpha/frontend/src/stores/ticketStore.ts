@@ -1,7 +1,21 @@
 import { create } from "zustand";
 import { devtools } from "zustand/middleware";
 import { ticketApi } from "../services/api";
-import type { TicketWithTags, CreateTicketRequest, UpdateTicketRequest, TicketQuery } from "../types";
+import type {
+  TicketWithTags,
+  CreateTicketRequest,
+  UpdateTicketRequest,
+  TicketQuery,
+} from "../types";
+
+// Helper function to extract error message
+function getErrorMessage(error: unknown, defaultMessage: string): string {
+  if (error && typeof error === "object") {
+    const err = error as { response?: { data?: { error?: string } }; message?: string };
+    return err.response?.data?.error || err.message || defaultMessage;
+  }
+  return defaultMessage;
+}
 
 interface TicketState {
   // 状态
@@ -51,8 +65,8 @@ export const useTicketStore = create<TicketState>()(
             tags: ticket.tags || [],
           }));
           set({ tickets: ticketsWithTags, loading: false });
-        } catch (error: any) {
-          const errorMessage = error.response?.data?.error || error.message || "获取 Ticket 列表失败";
+        } catch (error: unknown) {
+          const errorMessage = getErrorMessage(error, "获取 Ticket 列表失败");
           set({ error: errorMessage, loading: false });
         }
       },
@@ -69,8 +83,8 @@ export const useTicketStore = create<TicketState>()(
           };
           set({ loading: false });
           return ticketWithTags;
-        } catch (error: any) {
-          const errorMessage = error.response?.data?.error || error.message || "获取 Ticket 失败";
+        } catch (error: unknown) {
+          const errorMessage = getErrorMessage(error, "获取 Ticket 失败");
           set({ error: errorMessage, loading: false });
           return null;
         }
@@ -91,8 +105,8 @@ export const useTicketStore = create<TicketState>()(
             loading: false,
           }));
           return ticketWithTags;
-        } catch (error: any) {
-          const errorMessage = error.response?.data?.error || error.message || "创建 Ticket 失败";
+        } catch (error: unknown) {
+          const errorMessage = getErrorMessage(error, "创建 Ticket 失败");
           set({ error: errorMessage, loading: false });
           return null;
         }
@@ -113,8 +127,8 @@ export const useTicketStore = create<TicketState>()(
             loading: false,
           }));
           return ticketWithTags;
-        } catch (error: any) {
-          const errorMessage = error.response?.data?.error || error.message || "更新 Ticket 失败";
+        } catch (error: unknown) {
+          const errorMessage = getErrorMessage(error, "更新 Ticket 失败");
           set({ error: errorMessage, loading: false });
           return null;
         }
@@ -130,8 +144,8 @@ export const useTicketStore = create<TicketState>()(
             loading: false,
           }));
           return true;
-        } catch (error: any) {
-          const errorMessage = error.response?.data?.error || error.message || "删除 Ticket 失败";
+        } catch (error: unknown) {
+          const errorMessage = getErrorMessage(error, "删除 Ticket 失败");
           set({ error: errorMessage, loading: false });
           return false;
         }
@@ -152,8 +166,8 @@ export const useTicketStore = create<TicketState>()(
             loading: false,
           }));
           return true;
-        } catch (error: any) {
-          const errorMessage = error.response?.data?.error || error.message || "切换完成状态失败";
+        } catch (error: unknown) {
+          const errorMessage = getErrorMessage(error, "切换完成状态失败");
           set({ error: errorMessage, loading: false });
           return false;
         }
@@ -176,8 +190,8 @@ export const useTicketStore = create<TicketState>()(
             loading: false,
           }));
           return true;
-        } catch (error: any) {
-          const errorMessage = error.response?.data?.error || error.message || "添加标签失败";
+        } catch (error: unknown) {
+          const errorMessage = getErrorMessage(error, "添加标签失败");
           set({ error: errorMessage, loading: false });
           return false;
         }
@@ -200,8 +214,8 @@ export const useTicketStore = create<TicketState>()(
             loading: false,
           }));
           return true;
-        } catch (error: any) {
-          const errorMessage = error.response?.data?.error || error.message || "移除标签失败";
+        } catch (error: unknown) {
+          const errorMessage = getErrorMessage(error, "移除标签失败");
           set({ error: errorMessage, loading: false });
           return false;
         }

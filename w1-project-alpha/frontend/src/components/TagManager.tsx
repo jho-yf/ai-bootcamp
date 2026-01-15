@@ -19,7 +19,11 @@ import type { Tag, CreateTagRequest, UpdateTagRequest } from "@/types";
 
 const tagSchema = z.object({
   name: z.string().min(1, "标签名称不能为空").max(50, "标签名称不能超过 50 个字符"),
-  color: z.string().regex(/^#[0-9A-Fa-f]{6}$/, "颜色格式不正确（应为 #RRGGBB）").optional().nullable(),
+  color: z
+    .string()
+    .regex(/^#[0-9A-Fa-f]{6}$/, "颜色格式不正确（应为 #RRGGBB）")
+    .optional()
+    .nullable(),
 });
 
 type TagFormData = z.infer<typeof tagSchema>;
@@ -124,7 +128,10 @@ export function TagManager({
           )}
 
           {showForm && (
-            <form onSubmit={handleSubmit(handleFormSubmit)} className="space-y-4 p-4 border rounded-lg">
+            <form
+              onSubmit={handleSubmit(handleFormSubmit)}
+              className="space-y-4 p-4 border rounded-lg"
+            >
               <div className="space-y-2">
                 <Label htmlFor="tag-name">
                   标签名称 <span className="text-destructive">*</span>
@@ -135,9 +142,7 @@ export function TagManager({
                   placeholder="输入标签名称"
                   className={errors.name ? "border-destructive" : ""}
                 />
-                {errors.name && (
-                  <p className="text-sm text-destructive">{errors.name.message}</p>
-                )}
+                {errors.name && <p className="text-sm text-destructive">{errors.name.message}</p>}
               </div>
 
               <div className="space-y-2">
@@ -158,9 +163,7 @@ export function TagManager({
                     className={errors.color ? "border-destructive" : ""}
                   />
                 </div>
-                {errors.color && (
-                  <p className="text-sm text-destructive">{errors.color.message}</p>
-                )}
+                {errors.color && <p className="text-sm text-destructive">{errors.color.message}</p>}
               </div>
 
               <div className="flex gap-2">
@@ -178,9 +181,7 @@ export function TagManager({
             <Label>标签列表</Label>
             <div className="space-y-2 max-h-60 overflow-y-auto">
               {tags.length === 0 ? (
-                <p className="text-sm text-muted-foreground text-center py-4">
-                  暂无标签
-                </p>
+                <p className="text-sm text-muted-foreground text-center py-4">暂无标签</p>
               ) : (
                 tags.map((tag) => (
                   <div

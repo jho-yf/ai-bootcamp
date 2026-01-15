@@ -1,8 +1,8 @@
+use axum::http::header;
 use axum::Router;
 use std::net::SocketAddr;
 use tower_http::cors::{Any, CorsLayer};
 use tower_http::trace::TraceLayer;
-use axum::http::header;
 use tracing::info;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
@@ -22,33 +22,31 @@ use routes::create_routes;
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // 加载环境变量
     dotenvy::dotenv().ok();
-    
+
     // 初始化日志
     tracing_subscriber::registry()
-        .with(
-            tracing_subscriber::EnvFilter::new(
-                std::env::var("RUST_LOG")
-                    .unwrap_or_else(|_| "project_alpha_backend=debug,tower_http=debug".into()),
-            ),
-        )
+        .with(tracing_subscriber::EnvFilter::new(
+            std::env::var("RUST_LOG")
+                .unwrap_or_else(|_| "project_alpha_backend=debug,tower_http=debug".into()),
+        ))
         .with(tracing_subscriber::fmt::layer())
         .init();
-    
+
     // 加载配置
     let config = Config::from_env()?;
     info!("Loaded configuration: {:?}", config);
-    
+
     // 连接数据库
     let pool = sqlx::PgPool::connect(&config.database.url).await?;
     info!("Connected to database");
-    
+
     // 运行迁移
     sqlx::migrate!("./migrations").run(&pool).await?;
     info!("Database migrations completed");
-    
+
     // 创建仓库
     let repositories = Repositories::new(pool);
-    
+
     // 创建应用
     let app = Router::new()
         .merge(create_routes(repositories))
@@ -56,15 +54,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             CorsLayer::new()
                 .allow_origin(Any)
                 .allow_methods(Any)
-                .allow_headers([
-                    header::CONTENT_TYPE,
-                    header::AUTHORIZATION,
-                    header::ACCEPT,
-                ])
+                .allow_headers([header::CONTENT_TYPE, header::AUTHORIZATION, header::ACCEPT])
                 .expose_headers(Any),
         )
         .layer(TraceLayer::new_for_http());
-    
+
     // 启动服务器
     let addr: SocketAddr = format!("{}:{}", config.server.host, config.server.port)
         .parse()
@@ -75,9 +69,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             )
         })?;
     info!("Starting server on {}", addr);
-    
+
     let listener = tokio::net::TcpListener::bind(addr).await?;
     axum::serve(listener, app).await?;
-    
+
     Ok(())
 }

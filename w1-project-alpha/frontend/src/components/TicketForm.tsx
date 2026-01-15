@@ -106,9 +106,7 @@ export function TicketForm({
         <DialogHeader>
           <DialogTitle>{mode === "create" ? "创建 Ticket" : "编辑 Ticket"}</DialogTitle>
           <DialogDescription>
-            {mode === "create"
-              ? "填写以下信息创建新的 Ticket"
-              : "修改 Ticket 信息"}
+            {mode === "create" ? "填写以下信息创建新的 Ticket" : "修改 Ticket 信息"}
           </DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit(handleFormSubmit)} className="space-y-6">
@@ -131,7 +129,9 @@ export function TicketForm({
           </div>
 
           <div className="space-y-3">
-            <Label htmlFor="description" className="text-[15px] font-semibold tracking-[-0.01em]">描述</Label>
+            <Label htmlFor="description" className="text-[15px] font-semibold tracking-[-0.01em]">
+              描述
+            </Label>
             <Textarea
               id="description"
               {...register("description")}

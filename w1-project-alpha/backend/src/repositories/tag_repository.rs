@@ -16,9 +16,9 @@ impl TagRepository {
 
     pub async fn find_all(&self) -> Result<Vec<Tag>> {
         let tags = sqlx::query_as::<_, Tag>(
-            "SELECT id, name, color, created_at 
-             FROM tags 
-             ORDER BY name"
+            "SELECT id, name, color, created_at
+             FROM tags
+             ORDER BY name",
         )
         .fetch_all(&self.pool)
         .await?;
@@ -28,9 +28,9 @@ impl TagRepository {
 
     pub async fn find_by_id(&self, id: Uuid) -> Result<Option<Tag>> {
         let tag = sqlx::query_as::<_, Tag>(
-            "SELECT id, name, color, created_at 
-             FROM tags 
-             WHERE id = $1"
+            "SELECT id, name, color, created_at
+             FROM tags
+             WHERE id = $1",
         )
         .bind(id)
         .fetch_optional(&self.pool)
@@ -41,9 +41,9 @@ impl TagRepository {
 
     pub async fn find_by_name(&self, name: &str) -> Result<Option<Tag>> {
         let tag = sqlx::query_as::<_, Tag>(
-            "SELECT id, name, color, created_at 
-             FROM tags 
-             WHERE name = $1"
+            "SELECT id, name, color, created_at
+             FROM tags
+             WHERE name = $1",
         )
         .bind(name)
         .fetch_optional(&self.pool)
@@ -55,16 +55,17 @@ impl TagRepository {
     pub async fn create(&self, request: CreateTagRequest) -> Result<Tag> {
         // Check if tag with same name already exists
         if let Some(_existing) = self.find_by_name(&request.name).await? {
-            return Err(AppError::Validation(
-                format!("Tag with name '{}' already exists", request.name)
-            ));
+            return Err(AppError::Validation(format!(
+                "Tag with name '{}' already exists",
+                request.name
+            )));
         }
 
         let now = Utc::now();
         let tag = sqlx::query_as::<_, Tag>(
             "INSERT INTO tags (name, color, created_at)
              VALUES ($1, $2, $3)
-             RETURNING id, name, color, created_at"
+             RETURNING id, name, color, created_at",
         )
         .bind(&request.name)
         .bind(&request.color)
@@ -76,7 +77,7 @@ impl TagRepository {
     }
 
     /// Update a tag with partial data.
-    /// 
+    ///
     /// Only provided fields will be updated. Returns an error if the tag does not exist
     /// or if the new name conflicts with an existing tag.
     pub async fn update(&self, id: Uuid, request: UpdateTagRequest) -> Result<Tag> {
@@ -84,9 +85,10 @@ impl TagRepository {
         if let Some(ref new_name) = request.name {
             if let Some(existing_tag) = self.find_by_name(new_name).await? {
                 if existing_tag.id != id {
-                    return Err(AppError::Validation(
-                        format!("Tag with name '{}' already exists", new_name)
-                    ));
+                    return Err(AppError::Validation(format!(
+                        "Tag with name '{}' already exists",
+                        new_name
+                    )));
                 }
             }
         }
@@ -113,7 +115,7 @@ impl TagRepository {
         }
 
         let query = format!(
-            "UPDATE tags SET {} WHERE id = ${} 
+            "UPDATE tags SET {} WHERE id = ${}
              RETURNING id, name, color, created_at",
             updates.join(", "),
             bind_count

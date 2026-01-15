@@ -1,10 +1,10 @@
 use sqlx::PgPool;
 
-pub mod ticket_repository;
 pub mod tag_repository;
+pub mod ticket_repository;
 
-pub use ticket_repository::TicketRepository;
 pub use tag_repository::TagRepository;
+pub use ticket_repository::TicketRepository;
 
 #[derive(Clone)]
 pub struct Repositories {

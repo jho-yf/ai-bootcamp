@@ -32,14 +32,7 @@ export function TicketsPage() {
     toggleCompleted,
   } = useTicketStore();
 
-  const {
-    tags,
-    loading: tagsLoading,
-    fetchTags,
-    createTag,
-    updateTag,
-    deleteTag,
-  } = useTagStore();
+  const { tags, loading: tagsLoading, fetchTags, createTag, updateTag, deleteTag } = useTagStore();
 
   const {
     searchQuery,
@@ -156,7 +149,10 @@ export function TicketsPage() {
   };
 
   // 处理更新标签
-  const handleUpdateTag = async (id: string, data: { name?: string | null; color?: string | null }) => {
+  const handleUpdateTag = async (
+    id: string,
+    data: { name?: string | null; color?: string | null }
+  ) => {
     const result = await updateTag(id, data);
     if (result) {
       toast({
@@ -204,8 +200,8 @@ export function TicketsPage() {
               <div className="flex-1 max-w-2xl">
                 <SearchBar value={searchQuery} onChange={setSearchQuery} />
               </div>
-              <Button 
-                onClick={() => setTicketFormOpen(true)} 
+              <Button
+                onClick={() => setTicketFormOpen(true)}
                 size="lg"
                 className="shadow-sm hover:shadow-md transition-all duration-300"
               >
@@ -242,8 +238,8 @@ export function TicketsPage() {
             ) : tickets.length === 0 ? (
               <div className="flex flex-col items-center justify-center h-[60vh]">
                 <p className="text-muted-foreground mb-8 text-[19px] font-medium">暂无 Ticket</p>
-                <Button 
-                  onClick={() => setTicketFormOpen(true)} 
+                <Button
+                  onClick={() => setTicketFormOpen(true)}
                   size="lg"
                   className="shadow-sm hover:shadow-md transition-all duration-300"
                 >

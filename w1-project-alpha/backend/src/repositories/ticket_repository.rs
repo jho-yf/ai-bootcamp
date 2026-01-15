@@ -15,7 +15,7 @@ impl TicketRepository {
     }
 
     /// Find all tickets with optional filtering by tag, search term, and completed status.
-    /// 
+    ///
     /// # Performance Note
     /// This method performs N+1 queries (one for tickets, then one per ticket for tags).
     /// For large datasets, consider optimizing with a single JOIN query and grouping in application code.
@@ -28,7 +28,7 @@ impl TicketRepository {
         // Base query for tickets
         let mut query = String::from(
             "SELECT DISTINCT t.id, t.title, t.description, t.completed, t.created_at, t.updated_at
-             FROM tickets t"
+             FROM tickets t",
         );
 
         let mut conditions = Vec::new();
@@ -91,9 +91,9 @@ impl TicketRepository {
 
     pub async fn find_by_id(&self, id: Uuid) -> Result<Option<TicketWithTags>> {
         let ticket = sqlx::query_as::<_, Ticket>(
-            "SELECT id, title, description, completed, created_at, updated_at 
-             FROM tickets 
-             WHERE id = $1"
+            "SELECT id, title, description, completed, created_at, updated_at
+             FROM tickets
+             WHERE id = $1",
         )
         .bind(id)
         .fetch_optional(&self.pool)
@@ -117,7 +117,7 @@ impl TicketRepository {
         let ticket = sqlx::query_as::<_, Ticket>(
             "INSERT INTO tickets (title, description, completed, created_at, updated_at)
              VALUES ($1, $2, false, $3, $3)
-             RETURNING id, title, description, completed, created_at, updated_at"
+             RETURNING id, title, description, completed, created_at, updated_at",
         )
         .bind(&request.title)
         .bind(&request.description)
@@ -131,7 +131,7 @@ impl TicketRepository {
                 sqlx::query(
                     "INSERT INTO ticket_tags (ticket_id, tag_id)
                      VALUES ($1, $2)
-                     ON CONFLICT DO NOTHING"
+                     ON CONFLICT DO NOTHING",
                 )
                 .bind(ticket.id)
                 .bind(tag_id)
@@ -145,7 +145,7 @@ impl TicketRepository {
     }
 
     /// Update a ticket with partial data.
-    /// 
+    ///
     /// Only provided fields will be updated. The `updated_at` field is always updated.
     /// Returns an error if the ticket does not exist.
     pub async fn update(&self, id: Uuid, request: UpdateTicketRequest) -> Result<Ticket> {
@@ -180,7 +180,7 @@ impl TicketRepository {
         bind_count += 1;
 
         let query = format!(
-            "UPDATE tickets SET {} WHERE id = ${} 
+            "UPDATE tickets SET {} WHERE id = ${}
              RETURNING id, title, description, completed, created_at, updated_at",
             updates.join(", "),
             bind_count
@@ -213,7 +213,10 @@ impl TicketRepository {
             .await?;
 
         if result.rows_affected() == 0 {
-            return Err(AppError::NotFound(format!("Ticket with id {} not found", id)));
+            return Err(AppError::NotFound(format!(
+                "Ticket with id {} not found",
+                id
+            )));
         }
 
         Ok(())
@@ -222,10 +225,10 @@ impl TicketRepository {
     pub async fn toggle_completed(&self, id: Uuid) -> Result<Ticket> {
         let now = Utc::now();
         let ticket = sqlx::query_as::<_, Ticket>(
-            "UPDATE tickets 
+            "UPDATE tickets
              SET completed = NOT completed, updated_at = $1
              WHERE id = $2
-             RETURNING id, title, description, completed, created_at, updated_at"
+             RETURNING id, title, description, completed, created_at, updated_at",
         )
         .bind(now)
         .bind(id)
@@ -239,13 +242,16 @@ impl TicketRepository {
         // Check if ticket exists
         let ticket = self.find_by_id(ticket_id).await?;
         if ticket.is_none() {
-            return Err(AppError::NotFound(format!("Ticket with id {} not found", ticket_id)));
+            return Err(AppError::NotFound(format!(
+                "Ticket with id {} not found",
+                ticket_id
+            )));
         }
 
         sqlx::query(
             "INSERT INTO ticket_tags (ticket_id, tag_id)
              VALUES ($1, $2)
-             ON CONFLICT DO NOTHING"
+             ON CONFLICT DO NOTHING",
         )
         .bind(ticket_id)
         .bind(tag_id)
@@ -257,8 +263,8 @@ impl TicketRepository {
 
     pub async fn remove_tag(&self, ticket_id: Uuid, tag_id: Uuid) -> Result<()> {
         let result = sqlx::query(
-            "DELETE FROM ticket_tags 
-             WHERE ticket_id = $1 AND tag_id = $2"
+            "DELETE FROM ticket_tags
+             WHERE ticket_id = $1 AND tag_id = $2",
         )
         .bind(ticket_id)
         .bind(tag_id)
@@ -266,16 +272,17 @@ impl TicketRepository {
         .await?;
 
         if result.rows_affected() == 0 {
-            return Err(AppError::NotFound(
-                format!("Tag {} not found on ticket {}", tag_id, ticket_id)
-            ));
+            return Err(AppError::NotFound(format!(
+                "Tag {} not found on ticket {}",
+                tag_id, ticket_id
+            )));
         }
 
         Ok(())
     }
 
     /// Helper method to get tags for a ticket.
-    /// 
+    ///
     /// This method is used internally to fetch tags for tickets.
     /// The query uses an INNER JOIN which is efficient due to the index on ticket_tags.
     async fn get_ticket_tags(&self, ticket_id: Uuid) -> Result<Vec<Tag>> {
@@ -284,7 +291,7 @@ impl TicketRepository {
              FROM tags t
              INNER JOIN ticket_tags tt ON t.id = tt.tag_id
              WHERE tt.ticket_id = $1
-             ORDER BY t.name"
+             ORDER BY t.name",
         )
         .bind(ticket_id)
         .fetch_all(&self.pool)

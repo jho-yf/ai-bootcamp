@@ -40,10 +40,7 @@ export function TagSelector({
               tag={tag}
               variant={isSelected ? "default" : "outline"}
               onClick={() => toggleTag(tag.id)}
-              className={cn(
-                "transition-all",
-                isSelected && "ring-2 ring-ring ring-offset-2"
-              )}
+              className={cn("transition-all", isSelected && "ring-2 ring-ring ring-offset-2")}
             />
           );
         })}
@@ -55,11 +52,7 @@ export function TagSelector({
             const tag = tags.find((t) => t.id === tagId);
             if (!tag) return null;
             return (
-              <Badge
-                key={tagId}
-                variant="secondary"
-                className="flex items-center gap-1"
-              >
+              <Badge key={tagId} variant="secondary" className="flex items-center gap-1">
                 {tag.name}
                 <button
                   onClick={() => toggleTag(tagId)}

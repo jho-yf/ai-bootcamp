@@ -22,7 +22,7 @@
   --color-input: #d2d2d7;
   --color-ring: #0071e3;
   --radius: 1rem;
-  
+
   /* Apple-inspired shadows - More refined and subtle */
   --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.03);
   --shadow-md: 0 4px 12px 0 rgba(0, 0, 0, 0.05), 0 2px 4px 0 rgba(0, 0, 0, 0.02);
@@ -44,7 +44,9 @@ html {
 body {
   background-color: var(--color-background);
   color: var(--color-foreground);
-  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Helvetica Neue", Helvetica, Arial, sans-serif;
+  font-family:
+    -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Helvetica Neue", Helvetica,
+    Arial, sans-serif;
   font-feature-settings: "kern" 1;
   font-kerning: normal;
   letter-spacing: -0.011em;
@@ -54,7 +56,8 @@ body {
 
 /* Ultra smooth transitions - Apple style */
 * {
-  transition-property: color, background-color, border-color, opacity, transform, box-shadow, filter;
+  transition-property:
+    color, background-color, border-color, opacity, transform, box-shadow, filter;
   transition-timing-function: cubic-bezier(0.25, 0.46, 0.45, 0.94);
   transition-duration: 300ms;
 }

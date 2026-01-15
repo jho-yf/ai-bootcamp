@@ -31,8 +31,8 @@ export function TicketCard({
           <div className="flex-1 min-w-0">
             <h3
               className={`text-[19px] font-semibold leading-[1.3] tracking-[-0.01em] ${
-                ticket.completed 
-                  ? "line-through text-muted-foreground opacity-50" 
+                ticket.completed
+                  ? "line-through text-muted-foreground opacity-50"
                   : "text-foreground"
               }`}
             >
@@ -68,11 +68,7 @@ export function TicketCard({
         {ticket.tags && ticket.tags.length > 0 && (
           <div className="flex flex-wrap gap-2.5 w-full">
             {ticket.tags.map((tag) => (
-              <TagBadge
-                key={tag.id}
-                tag={tag}
-                onClick={() => onTagClick?.(tag.id)}
-              />
+              <TagBadge key={tag.id} tag={tag} onClick={() => onTagClick?.(tag.id)} />
             ))}
           </div>
         )}

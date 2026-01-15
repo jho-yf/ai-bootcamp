@@ -34,11 +34,9 @@ pub async fn get_ticket(
     Path(id): Path<Uuid>,
     State(repositories): State<Repositories>,
 ) -> Result<Json<TicketWithTags>> {
-    let ticket = repositories
-        .ticket
-        .find_by_id(id)
-        .await?
-        .ok_or_else(|| crate::utils::error::AppError::NotFound(format!("Ticket with id {} not found", id)))?;
+    let ticket = repositories.ticket.find_by_id(id).await?.ok_or_else(|| {
+        crate::utils::error::AppError::NotFound(format!("Ticket with id {} not found", id))
+    })?;
     Ok(Json(ticket))
 }
 

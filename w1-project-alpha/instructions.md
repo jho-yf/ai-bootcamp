@@ -47,3 +47,7 @@
 ## 优化 UI
 
 按照 apple website 的风格，think ultra hard，优化 UI 和 UX
+
+## pre-commit && github action
+
+use pre-commit to init the config and setup precommit for rust and typescript for this project, and also setup github action properties.

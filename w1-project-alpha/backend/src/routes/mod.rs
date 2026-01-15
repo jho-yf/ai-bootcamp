@@ -16,9 +16,7 @@ pub fn create_routes(repositories: Repositories) -> Router {
         .route("/api/tickets", get(get_tickets).post(create_ticket))
         .route(
             "/api/tickets/{id}",
-            get(get_ticket)
-                .put(update_ticket)
-                .delete(delete_ticket),
+            get(get_ticket).put(update_ticket).delete(delete_ticket),
         )
         .route("/api/tickets/{id}/toggle", patch(toggle_ticket_completed))
         .route(
@@ -29,9 +27,7 @@ pub fn create_routes(repositories: Repositories) -> Router {
         .route("/api/tags", get(get_tags).post(create_tag))
         .route(
             "/api/tags/{id}",
-            get(get_tag)
-                .put(update_tag)
-                .delete(delete_tag),
+            get(get_tag).put(update_tag).delete(delete_tag),
         )
         .with_state(repositories)
 }

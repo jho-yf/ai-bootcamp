@@ -10,13 +10,13 @@ use thiserror::Error;
 pub enum AppError {
     #[error("Database error: {0}")]
     Database(#[from] sqlx::Error),
-    
+
     #[error("Not found: {0}")]
     NotFound(String),
-    
+
     #[error("Validation error: {0}")]
     Validation(String),
-    
+
     #[allow(dead_code)]
     #[error("Internal server error: {0}")]
     Internal(String),
@@ -33,15 +33,18 @@ impl IntoResponse for AppError {
             AppError::Validation(msg) => (StatusCode::BAD_REQUEST, msg.clone()),
             AppError::Internal(msg) => {
                 tracing::error!("Internal error: {}", msg);
-                (StatusCode::INTERNAL_SERVER_ERROR, "内部服务器错误".to_string())
+                (
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    "内部服务器错误".to_string(),
+                )
             }
         };
-        
+
         let body = Json(json!({
             "error": error_message,
             "status": status.as_u16()
         }));
-        
+
         (status, body).into_response()
     }
 }

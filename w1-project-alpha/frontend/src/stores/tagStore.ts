@@ -3,6 +3,15 @@ import { devtools } from "zustand/middleware";
 import { tagApi } from "../services/api";
 import type { Tag, CreateTagRequest, UpdateTagRequest } from "../types";
 
+// Helper function to extract error message
+function getErrorMessage(error: unknown, defaultMessage: string): string {
+  if (error && typeof error === "object") {
+    const err = error as { response?: { data?: { error?: string } }; message?: string };
+    return err.response?.data?.error || err.message || defaultMessage;
+  }
+  return defaultMessage;
+}
+
 interface TagState {
   // 状态
   tags: Tag[];
@@ -41,8 +50,8 @@ export const useTagStore = create<TagState>()(
         try {
           const tags = await tagApi.getTags();
           set({ tags, loading: false });
-        } catch (error: any) {
-          const errorMessage = error.response?.data?.error || error.message || "获取标签列表失败";
+        } catch (error: unknown) {
+          const errorMessage = getErrorMessage(error, "获取标签列表失败");
           set({ error: errorMessage, loading: false });
         }
       },
@@ -54,8 +63,8 @@ export const useTagStore = create<TagState>()(
           const tag = await tagApi.getTag(id);
           set({ loading: false });
           return tag;
-        } catch (error: any) {
-          const errorMessage = error.response?.data?.error || error.message || "获取标签失败";
+        } catch (error: unknown) {
+          const errorMessage = getErrorMessage(error, "获取标签失败");
           set({ error: errorMessage, loading: false });
           return null;
         }
@@ -71,8 +80,8 @@ export const useTagStore = create<TagState>()(
             loading: false,
           }));
           return newTag;
-        } catch (error: any) {
-          const errorMessage = error.response?.data?.error || error.message || "创建标签失败";
+        } catch (error: unknown) {
+          const errorMessage = getErrorMessage(error, "创建标签失败");
           set({ error: errorMessage, loading: false });
           return null;
         }
@@ -90,8 +99,8 @@ export const useTagStore = create<TagState>()(
             loading: false,
           }));
           return updatedTag;
-        } catch (error: any) {
-          const errorMessage = error.response?.data?.error || error.message || "更新标签失败";
+        } catch (error: unknown) {
+          const errorMessage = getErrorMessage(error, "更新标签失败");
           set({ error: errorMessage, loading: false });
           return null;
         }
@@ -107,8 +116,8 @@ export const useTagStore = create<TagState>()(
             loading: false,
           }));
           return true;
-        } catch (error: any) {
-          const errorMessage = error.response?.data?.error || error.message || "删除标签失败";
+        } catch (error: unknown) {
+          const errorMessage = getErrorMessage(error, "删除标签失败");
           set({ error: errorMessage, loading: false });
           return false;
         }

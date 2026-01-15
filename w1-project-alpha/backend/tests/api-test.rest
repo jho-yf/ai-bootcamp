@@ -4,9 +4,9 @@
 @contentType = application/json
 
 ### Variables (will be set during tests)
-@ticketId = 
-@tagId = 
-@tagId2 = 
+@ticketId =
+@tagId =
+@tagId2 =
 
 ###############################################
 # Tag API Tests
