@@ -46,7 +46,7 @@ repos:
       - id: eslint
         name: eslint
         entry: bash
-        args: ['-c', 'ROOT=$(git rev-parse --show-toplevel); if [ -d "$ROOT/w1-project-alpha/frontend" ]; then cd "$ROOT/w1-project-alpha/frontend" && npm run lint -- --fix; elif [ -d "$ROOT/frontend" ]; then cd "$ROOT/frontend" && npm run lint -- --fix; else echo "Frontend directory not found, skipping"; fi']
+        args: ['-c', 'if ! command -v npm >/dev/null 2>&1; then echo "npm not found, skipping eslint"; exit 0; fi; ROOT=$(git rev-parse --show-toplevel); if [ -d "$ROOT/w1-project-alpha/frontend" ]; then cd "$ROOT/w1-project-alpha/frontend" && npm run lint -- --fix; elif [ -d "$ROOT/frontend" ]; then cd "$ROOT/frontend" && npm run lint -- --fix; else echo "Frontend directory not found, skipping"; fi']
         language: system
         types: [file]
         files: ^(w1-project-alpha/)?frontend/.*\.(ts|tsx|js|jsx)$
@@ -57,7 +57,7 @@ repos:
       - id: typescript-check
         name: TypeScript type check
         entry: bash
-        args: ['-c', 'ROOT=$(git rev-parse --show-toplevel); if [ -d "$ROOT/w1-project-alpha/frontend" ]; then cd "$ROOT/w1-project-alpha/frontend" && npx tsc --noEmit; elif [ -d "$ROOT/frontend" ]; then cd "$ROOT/frontend" && npx tsc --noEmit; else echo "Frontend directory not found, skipping"; fi']
+        args: ['-c', 'if ! command -v npx >/dev/null 2>&1; then echo "npx not found, skipping typescript-check"; exit 0; fi; ROOT=$(git rev-parse --show-toplevel); if [ -d "$ROOT/w1-project-alpha/frontend" ]; then cd "$ROOT/w1-project-alpha/frontend" && npx tsc --noEmit; elif [ -d "$ROOT/frontend" ]; then cd "$ROOT/frontend" && npx tsc --noEmit; else echo "Frontend directory not found, skipping"; fi']
         language: system
         types: [file]
         files: ^(w1-project-alpha/)?frontend/.*\.(ts|tsx)$
@@ -68,7 +68,7 @@ repos:
       - id: prettier
         name: prettier
         entry: bash
-        args: ['-c', 'ROOT=$(git rev-parse --show-toplevel); FRONTEND_DIR="$ROOT/w1-project-alpha/frontend"; if [ ! -d "$FRONTEND_DIR" ]; then FRONTEND_DIR="$ROOT/frontend"; fi; if [ -d "$FRONTEND_DIR" ]; then cd "$FRONTEND_DIR" && for file in "$@"; do REL_FILE="${file#$ROOT/}"; REL_FILE="${REL_FILE#w1-project-alpha/frontend/}"; if [ -f "src/$REL_FILE" ]; then npx prettier --write "src/$REL_FILE"; elif [ -f "$REL_FILE" ]; then npx prettier --write "$REL_FILE"; fi; done; else echo "Frontend directory not found, skipping"; fi']
+        args: ['-c', 'if ! command -v npx >/dev/null 2>&1; then echo "npx not found, skipping prettier"; exit 0; fi; ROOT=$(git rev-parse --show-toplevel); FRONTEND_DIR="$ROOT/w1-project-alpha/frontend"; if [ ! -d "$FRONTEND_DIR" ]; then FRONTEND_DIR="$ROOT/frontend"; fi; if [ -d "$FRONTEND_DIR" ]; then cd "$FRONTEND_DIR" && for file in "$@"; do REL_FILE="${file#$ROOT/}"; REL_FILE="${REL_FILE#w1-project-alpha/frontend/}"; if [ -f "src/$REL_FILE" ]; then npx prettier --write "src/$REL_FILE"; elif [ -f "$REL_FILE" ]; then npx prettier --write "$REL_FILE"; fi; done; else echo "Frontend directory not found, skipping"; fi']
         language: system
         types: [file]
         files: ^(w1-project-alpha/)?frontend/.*\.(ts|tsx|js|jsx|json|css|scss|md|yml|yaml)$
