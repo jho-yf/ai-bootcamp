@@ -1,0 +1,288 @@
+# Cursor Rust Best Practices Rules
+
+## Error Handling
+
+### Application Code (Binary/Cli)
+- **Always use `anyhow`** for error handling in application code
+- Use `anyhow::Result<T>` as the return type for functions that can fail
+- Use `anyhow::Context` for adding context to errors
+- Use `?` operator for error propagation
+- Example:
+  ```rust
+  use anyhow::{Context, Result};
+
+  fn read_config() -> Result<Config> {
+      let content = std::fs::read_to_string("config.toml")
+          .context("Failed to read config file")?;
+      // ...
+  }
+  ```
+
+### Library Code
+- **Always use `thiserror`** for error handling in library code
+- Define custom error types using `#[derive(thiserror::Error)]`
+- Implement `Display` and `std::error::Error` via `thiserror`
+- Example:
+  ```rust
+  use thiserror::Error;
+
+  #[derive(Error, Debug)]
+  pub enum DatabaseError {
+      #[error("Connection failed: {0}")]
+      ConnectionFailed(String),
+      #[error("Query failed: {0}")]
+      QueryFailed(#[from] sqlx::Error),
+  }
+  ```
+
+## Concurrency and Synchronization
+
+### Channels (Preferred)
+- **Always prefer channels** (`std::sync::mpsc` or `tokio::sync::mpsc`) for communication between threads/tasks
+- Use channels instead of shared mutable state when possible
+- Example:
+  ```rust
+  use std::sync::mpsc;
+
+  let (tx, rx) = mpsc::channel();
+  // Use tx for sending, rx for receiving
+  ```
+
+### Async Concurrency
+- Use `tokio` for async runtime
+- Prefer `tokio::spawn` for concurrent tasks
+- Use `tokio::sync::mpsc` for async channels
+- Use `tokio::sync::Mutex` or `tokio::sync::RwLock` for async synchronization (only when necessary)
+- Example:
+  ```rust
+  use tokio::sync::mpsc;
+
+  let (tx, mut rx) = mpsc::channel(100);
+  tokio::spawn(async move {
+      // async task
+  });
+  ```
+
+### Synchronization Primitives
+- Use `std::sync::Mutex` or `std::sync::RwLock` for thread synchronization (only when channels are not suitable)
+- Prefer `Arc<Mutex<T>>` over `Rc<Mutex<T>>` for multi-threaded code
+- Avoid `RefCell` in multi-threaded contexts
+
+## Async Programming
+
+### Runtime
+- **Always use `tokio`** as the async runtime
+- Use `#[tokio::main]` for async main functions
+- Use `tokio::test` for async tests
+- Example:
+  ```rust
+  #[tokio::main]
+  async fn main() -> Result<()> {
+      // async code
+      Ok(())
+  }
+  ```
+
+### Async Patterns
+- Use `.await` for async operations
+- Prefer `tokio::select!` for concurrent async operations
+- Use `tokio::time::sleep` instead of `std::thread::sleep` in async contexts
+- Use `tokio::fs` for async file operations
+
+## Web and gRPC Frameworks
+
+### Web Framework
+- **Use `axum`** for HTTP web services
+- Use `axum::Router` for routing
+- Use `axum::extract` for request extraction
+- Use `axum::response` for responses
+- Example:
+  ```rust
+  use axum::{Router, routing::get, Json};
+
+  let app = Router::new()
+      .route("/", get(handler));
+  ```
+
+### gRPC Framework
+- **Use `tonic`** for gRPC services
+- Use `tonic::Request` and `tonic::Response` for gRPC types
+- Use `tonic::Status` for gRPC errors
+- Example:
+  ```rust
+  use tonic::{Request, Response, Status};
+
+  async fn handle_request(
+      request: Request<MyRequest>
+  ) -> Result<Response<MyResponse>, Status> {
+      // ...
+  }
+  ```
+
+## Standard Traits Implementation
+
+### Always Implement System Traits
+- **Always implement `From`, `TryFrom`, `FromStr`** when converting between types
+- Use `From` for infallible conversions
+- Use `TryFrom` for fallible conversions
+- Use `FromStr` for string parsing
+- Example:
+  ```rust
+  use std::str::FromStr;
+
+  #[derive(Debug)]
+  struct MyType(String);
+
+  impl From<String> for MyType {
+      fn from(s: String) -> Self {
+          MyType(s)
+      }
+  }
+
+  impl TryFrom<&str> for MyType {
+      type Error = anyhow::Error;
+
+      fn try_from(s: &str) -> Result<Self, Self::Error> {
+          if s.is_empty() {
+              return Err(anyhow::anyhow!("Empty string"));
+          }
+          Ok(MyType(s.to_string()))
+      }
+  }
+
+  impl FromStr for MyType {
+      type Err = anyhow::Error;
+
+      fn from_str(s: &str) -> Result<Self, Self::Err> {
+          TryFrom::try_from(s)
+      }
+  }
+  ```
+
+### Other Important Traits
+- Implement `Display` for user-facing string representation
+- Implement `Debug` for debugging (use `#[derive(Debug)]` when possible)
+- Implement `Clone`, `Copy`, `PartialEq`, `Eq`, `Hash` when appropriate
+- Use `#[derive(Serialize, Deserialize)]` from `serde` for serialization
+
+## Safety
+
+### No Unsafe Code
+- **Never use `unsafe` blocks** unless absolutely necessary and well-documented
+- Prefer safe alternatives from the standard library or crates
+- If `unsafe` is required, document why and ensure it's sound
+- Example of what NOT to do:
+  ```rust
+  // ❌ DON'T DO THIS
+  unsafe {
+      let ptr = raw_ptr.as_ref().unwrap();
+  }
+  ```
+
+## Code Organization
+
+### Module Structure
+- Organize code into logical modules
+- Use `mod.rs` or `lib.rs` for module declarations
+- Keep modules focused and cohesive
+
+### Naming Conventions
+- Use `snake_case` for functions, variables, and modules
+- Use `PascalCase` for types, traits, and enums
+- Use `SCREAMING_SNAKE_CASE` for constants
+- Use descriptive names that convey intent
+
+### Documentation
+- Document public APIs with `///` doc comments
+- Use `//` for internal comments
+- Include examples in doc comments when helpful
+- Document error conditions and panics
+
+## Testing
+
+### Unit Tests
+- Place unit tests in the same file with `#[cfg(test)]`
+- Use `#[test]` for synchronous tests
+- Use `#[tokio::test]` for async tests
+
+### Integration Tests
+- Place integration tests in `tests/` directory
+- Use `tokio::test` for async integration tests
+- Clean up resources after tests
+
+## Dependencies
+
+### Dependency Management
+- Keep dependencies minimal and up-to-date
+- Use specific versions in `Cargo.toml` (avoid wildcards)
+- Document why each dependency is needed
+- Prefer well-maintained crates from the Rust ecosystem
+
+## Performance
+
+### General Guidelines
+- Prefer `&str` over `String` when possible
+- Use `Vec::with_capacity` when size is known
+- Use `String::with_capacity` for string building
+- Avoid unnecessary allocations
+- Use `Cow` for conditional owned/borrowed data
+
+## Examples
+
+### Complete Example: Error Handling Pattern
+```rust
+// Library code (thiserror)
+use thiserror::Error;
+
+#[derive(Error, Debug)]
+pub enum MyLibError {
+    #[error("Invalid input: {0}")]
+    InvalidInput(String),
+    #[error("IO error: {0}")]
+    Io(#[from] std::io::Error),
+}
+
+// Application code (anyhow)
+use anyhow::{Context, Result};
+
+fn main() -> Result<()> {
+    let result = process_data()
+        .context("Failed to process data")?;
+    Ok(())
+}
+
+fn process_data() -> Result<String> {
+    // Use anyhow::Result
+    Ok("success".to_string())
+}
+```
+
+### Complete Example: Channel Communication
+```rust
+use std::sync::mpsc;
+use std::thread;
+
+fn main() {
+    let (tx, rx) = mpsc::channel();
+
+    thread::spawn(move || {
+        tx.send("Hello").unwrap();
+    });
+
+    let received = rx.recv().unwrap();
+    println!("Got: {}", received);
+}
+```
+
+### Complete Example: Async with Tokio
+```rust
+use tokio::time::{sleep, Duration};
+
+#[tokio::main]
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    println!("Starting...");
+    sleep(Duration::from_secs(1)).await;
+    println!("Done!");
+    Ok(())
+}
+```
