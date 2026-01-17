@@ -28,9 +28,7 @@ export function FilterPanel({
   return (
     <div className={cn("flex flex-row items-center gap-12", className)}>
       <div className="flex items-center gap-6">
-        <Label className="text-base font-medium text-foreground tracking-[-0.02em]">
-          完成状态
-        </Label>
+        <Label className="text-base font-medium text-foreground tracking-[-0.02em]">完成状态</Label>
         <div className="flex gap-2">
           <Button
             variant={showCompleted === null ? "default" : "outline"}
@@ -60,9 +58,7 @@ export function FilterPanel({
       </div>
 
       <div className="flex items-center gap-6">
-        <Label className="text-base font-medium text-foreground tracking-[-0.02em]">
-          标签筛选
-        </Label>
+        <Label className="text-base font-medium text-foreground tracking-[-0.02em]">标签筛选</Label>
         <Select
           value={selectedTagId || "all"}
           onValueChange={(value) => onTagChange(value === "all" ? null : value)}
