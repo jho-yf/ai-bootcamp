@@ -26,3 +26,85 @@
 
 后端：Rust / Tauri / tokio-postgres / sqlparser-rs / openai sdk
 前端：React / refine 5 / tailwind css / ant design 来实现。sql editor 使用 monaco editor 来实现。
+
+### 配置
+
+OpenAI API Key: 从环境变量 OPENAI_API_KEY 中获取。
+db metadata：存储在 sqlite 数据库中，放在 `./db_query.db` 中。
+
+### 后端 API
+
+提供的 Tauri API 接口定义，大致有这些：
+
+```rust
+// Tauri 后端 Rust API 示例：定义 tauri::command 函数，供前端调用
+
+/**
+    获取所有已连接的数据库
+ */
+#[tauri::command]
+async fn list_databases() -> Result<Vec<DatabaseInfo>, String> {
+    todo!()
+}
+
+/**
+    添加新的数据库连接配置，并立即尝试连接数据库
+*/
+#[tauri::command]
+async fn add_database(config: DatabaseInfo) -> Result<(), String> {
+    todo!()
+}
+
+/**
+    获取某个数据库的 metadata
+*/
+#[tauri::command]
+async fn get_database_metadata(database_id: String) -> Result<DatabaseMetadata, String> {
+    todo!()
+}
+
+/**
+    使用 sql 查询某个数据库，返回查询结果
+*/
+#[tauri::command]
+async fn run_sql_query(database_id: String, sql: String) -> Result<QueryResult, String> {
+    todo!()
+}
+
+/**
+    使用自然语言查询某个数据库，返回查询结果
+*/
+#[tauri::command]
+async fn run_sql_query_with_nl(database_id: String, prompt: String) -> Result<QueryResult, String> {
+    todo!()
+}
+```
+
+**类型定义（供参考，实际项目需详细定义）**:
+
+```rust
+struct DatabaseInfo {
+    id: String,
+    name: String,
+    host: String,
+    port: u16,
+    database_name: String,
+    user: String,
+    password: String,
+}
+
+struct DatabaseMetadata {
+    tables: Vec<TableInfo>,
+    views: Vec<ViewInfo>,
+    // ...
+}
+
+struct QueryResult {
+    columns: Vec<String>,
+    rows: Vec<std::collections::HashMap<String, serde_json::Value>>,
+    total: usize,
+    exec_time_ms: u64,
+    sql: String,
+}
+
+```
