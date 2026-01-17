@@ -51,3 +51,8 @@
 ## pre-commit && github action
 
 use pre-commit to init the config and setup precommit for rust and typescript for this project, and also setup github action properties.
+
+
+## 重构前端页面设计风格
+
+基于新的设计风格 `../.cursor/rules/style.md` 重构 `./frontend` 前端页面设计风格，优化 UI 和 UX。
