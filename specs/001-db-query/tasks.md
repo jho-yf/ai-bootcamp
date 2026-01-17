@@ -26,25 +26,25 @@
 
 ### 项目初始化
 
-- [ ] T001 创建 w2-db-query 目录并初始化 Tauri 项目（使用 `npm create tauri-app@latest`）
-- [ ] T002 [P] 配置后端 Cargo.toml 添加依赖：tauri, serde, tokio-postgres, rusqlite, sqlparser, async-openai, uuid, chrono
-- [ ] T003 [P] 配置前端 package.json 添加依赖：@refinedev/core, @refinedev/antd, antd, @monaco-editor/react, @tauri-apps/api
-- [ ] T004 [P] 创建 .env 文件模板配置 OPENAI_API_KEY
-- [ ] T005 [P] 配置 TypeScript tsconfig.json 启用 strict 模式
+- [x] T001 创建 w2-db-query 目录并初始化 Tauri 项目（使用 `npm create tauri-app@latest`）
+- [x] T002 [P] 配置后端 Cargo.toml 添加依赖：tauri, serde, tokio-postgres, rusqlite, sqlparser, async-openai, uuid, chrono
+- [x] T003 [P] 配置前端 package.json 添加依赖：@refinedev/core, @refinedev/antd, antd, @monaco-editor/react, @tauri-apps/api
+- [x] T004 [P] 创建 .env 文件模板配置 OPENAI_API_KEY
+- [x] T005 [P] 配置 TypeScript tsconfig.json 启用 strict 模式
 
 ### 后端基础结构
 
-- [ ] T006 [P] 创建后端目录结构：src-tauri/src/{commands, models, services, utils}
-- [ ] T007 [P] 实现错误处理 src-tauri/src/utils/error.rs 定义 AppError 枚举
-- [ ] T008 [P] 实现配置管理 src-tauri/src/utils/config.rs 读取环境变量
-- [ ] T009 实现 SQLite Schema 初始化 src-tauri/src/services/cache_service.rs 创建 connections 和 metadata 表
+- [x] T006 [P] 创建后端目录结构：src-tauri/src/{commands, models, services, utils}
+- [x] T007 [P] 实现错误处理 src-tauri/src/utils/error.rs 定义 AppError 枚举
+- [x] T008 [P] 实现配置管理 src-tauri/src/utils/config.rs 读取环境变量
+- [x] T009 实现 SQLite Schema 初始化 src-tauri/src/services/cache_service.rs 创建 connections 和 metadata 表
 
 ### 前端基础结构
 
-- [ ] T010 [P] 创建前端目录结构：src/{pages, components, services, hooks, stores, styles}
-- [ ] T011 [P] 配置 Tailwind CSS tailwind.config.js 和 globals.css
-- [ ] T012 [P] 定义 TypeScript 类型 src/services/types.ts 映射后端数据模型
-- [ ] T013 [P] 创建 Tauri API 封装 src/services/api.ts 统一 invoke 调用
+- [x] T010 [P] 创建前端目录结构：src/{pages, components, services, hooks, stores, styles}
+- [x] T011 [P] 配置 Tailwind CSS tailwind.config.js 和 globals.css
+- [x] T012 [P] 定义 TypeScript 类型 src/services/types.ts 映射后端数据模型
+- [x] T013 [P] 创建 Tauri API 封装 src/services/api.ts 统一 invoke 调用
 
 **Checkpoint**: 项目结构就绪，可以启动 Tauri 开发服务器（`npm run tauri dev`）
 
