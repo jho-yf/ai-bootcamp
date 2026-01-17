@@ -181,7 +181,7 @@ export function TicketsPage() {
   return (
     <div className="flex h-screen overflow-hidden bg-background">
       {/* 侧边栏 */}
-      <div className="w-80 shrink-0 border-r border-border/30 bg-card/40 backdrop-blur-xl">
+      <div className="w-80 shrink-0 border-r border-border bg-card">
         <Sidebar
           tags={tags}
           selectedTagId={selectedTagId}
@@ -194,18 +194,17 @@ export function TicketsPage() {
       {/* 主内容区 */}
       <div className="flex-1 flex flex-col overflow-hidden">
         {/* 顶部工具栏 */}
-        <div className="border-b border-border/30 bg-card/60 backdrop-blur-xl sticky top-0 z-10">
-          <div className="max-w-[1600px] mx-auto px-12 py-8">
-            <div className="flex items-center justify-between gap-8">
+        <div className="border-b border-border bg-card sticky top-0 z-10">
+          <div className="max-w-container mx-auto px-[5vw] py-6">
+            <div className="flex items-center justify-between gap-12">
               <div className="flex-1 max-w-2xl">
                 <SearchBar value={searchQuery} onChange={setSearchQuery} />
               </div>
               <Button
                 onClick={() => setTicketFormOpen(true)}
-                size="lg"
-                className="shadow-sm hover:shadow-md transition-all duration-300"
+                size="default"
               >
-                <Plus className="h-5 w-5 mr-2.5" />
+                <Plus className="h-4 w-4 mr-2" />
                 创建 Ticket
               </Button>
             </div>
@@ -213,8 +212,8 @@ export function TicketsPage() {
         </div>
 
         {/* 筛选面板 */}
-        <div className="border-b border-border/30 bg-muted/20 backdrop-blur-sm">
-          <div className="max-w-[1600px] mx-auto px-12 py-6">
+        <div className="border-b border-border bg-background">
+          <div className="max-w-container mx-auto px-[5vw] py-6">
             <FilterPanel
               tags={tags}
               selectedTagId={selectedTagId}
@@ -227,28 +226,27 @@ export function TicketsPage() {
 
         {/* Ticket 列表 */}
         <div className="flex-1 overflow-y-auto">
-          <div className="max-w-[1600px] mx-auto px-12 py-12">
+          <div className="max-w-container mx-auto px-[5vw] py-24">
             {ticketsLoading || tagsLoading ? (
               <div className="flex items-center justify-center h-[60vh]">
                 <div className="text-center">
-                  <div className="inline-block h-10 w-10 animate-spin rounded-full border-[3px] border-solid border-primary/30 border-t-primary mb-6"></div>
-                  <p className="text-muted-foreground text-[17px] font-medium">加载中...</p>
+                  <div className="inline-block h-10 w-10 animate-spin rounded-full border-2 border-solid border-border border-t-foreground mb-6"></div>
+                  <p className="text-muted-foreground text-base font-normal">加载中...</p>
                 </div>
               </div>
             ) : tickets.length === 0 ? (
               <div className="flex flex-col items-center justify-center h-[60vh]">
-                <p className="text-muted-foreground mb-8 text-[19px] font-medium">暂无 Ticket</p>
+                <p className="text-muted-foreground mb-12 text-lg font-normal">暂无 Ticket</p>
                 <Button
                   onClick={() => setTicketFormOpen(true)}
-                  size="lg"
-                  className="shadow-sm hover:shadow-md transition-all duration-300"
+                  size="default"
                 >
-                  <Plus className="h-5 w-5 mr-2.5" />
+                  <Plus className="h-4 w-4 mr-2" />
                   创建第一个 Ticket
                 </Button>
               </div>
             ) : (
-              <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
+              <div className="grid gap-12 grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
                 {tickets.map((ticket) => (
                   <TicketCard
                     key={ticket.id}

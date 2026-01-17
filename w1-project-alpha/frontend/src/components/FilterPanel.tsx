@@ -26,17 +26,17 @@ export function FilterPanel({
   className,
 }: FilterPanelProps) {
   return (
-    <div className={cn("flex flex-row items-center gap-10", className)}>
-      <div className="flex items-center gap-4">
-        <Label className="text-[15px] font-semibold text-foreground tracking-[-0.01em]">
+    <div className={cn("flex flex-row items-center gap-12", className)}>
+      <div className="flex items-center gap-6">
+        <Label className="text-base font-medium text-foreground tracking-[-0.02em]">
           完成状态
         </Label>
-        <div className="flex gap-2.5">
+        <div className="flex gap-2">
           <Button
             variant={showCompleted === null ? "default" : "outline"}
             size="sm"
             onClick={() => onCompletedChange(null)}
-            className="h-10 px-5 text-[14px] font-medium rounded-xl transition-all duration-300"
+            className="h-auto py-2 px-4 text-sm font-normal transition-all duration-300 ease"
           >
             全部
           </Button>
@@ -44,7 +44,7 @@ export function FilterPanel({
             variant={showCompleted === true ? "default" : "outline"}
             size="sm"
             onClick={() => onCompletedChange(true)}
-            className="h-10 px-5 text-[14px] font-medium rounded-xl transition-all duration-300"
+            className="h-auto py-2 px-4 text-sm font-normal transition-all duration-300 ease"
           >
             已完成
           </Button>
@@ -52,25 +52,25 @@ export function FilterPanel({
             variant={showCompleted === false ? "default" : "outline"}
             size="sm"
             onClick={() => onCompletedChange(false)}
-            className="h-10 px-5 text-[14px] font-medium rounded-xl transition-all duration-300"
+            className="h-auto py-2 px-4 text-sm font-normal transition-all duration-300 ease"
           >
             未完成
           </Button>
         </div>
       </div>
 
-      <div className="flex items-center gap-4">
-        <Label className="text-[15px] font-semibold text-foreground tracking-[-0.01em]">
+      <div className="flex items-center gap-6">
+        <Label className="text-base font-medium text-foreground tracking-[-0.02em]">
           标签筛选
         </Label>
         <Select
           value={selectedTagId || "all"}
           onValueChange={(value) => onTagChange(value === "all" ? null : value)}
         >
-          <SelectTrigger className="w-[220px] h-10 text-[14px] rounded-xl border-border/50 hover:border-border transition-all duration-300">
+          <SelectTrigger className="w-[220px] h-auto py-2 px-4 text-sm border-border transition-all duration-300 ease">
             <SelectValue placeholder="选择标签" />
           </SelectTrigger>
-          <SelectContent className="rounded-xl">
+          <SelectContent>
             <SelectItem value="all">全部标签</SelectItem>
             {tags.map((tag) => (
               <SelectItem key={tag.id} value={tag.id}>

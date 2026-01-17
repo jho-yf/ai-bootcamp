@@ -27,14 +27,14 @@ export function Sidebar({
 }: SidebarProps) {
   return (
     <div className={cn("flex flex-col h-full", className)}>
-      <div className="p-8 border-b border-border/30">
-        <h2 className="text-[24px] font-semibold mb-8 tracking-[-0.02em] text-foreground">标签</h2>
-        <div className="flex flex-col gap-2.5">
+      <div className="p-6 border-b border-border">
+        <h2 className="text-2xl font-medium mb-6 tracking-[-0.02em] text-foreground">标签</h2>
+        <div className="flex flex-col gap-2">
           <Button
             variant={selectedTagId === null ? "default" : "ghost"}
             size="sm"
             onClick={() => onTagClick(null)}
-            className="justify-start h-11 text-[15px] font-medium rounded-xl transition-all duration-300 hover:scale-[1.02] active:scale-[0.98]"
+            className="justify-start h-auto py-2 px-4 text-sm font-normal transition-all duration-300 ease"
           >
             全部
           </Button>
@@ -42,27 +42,27 @@ export function Sidebar({
             variant="ghost"
             size="sm"
             onClick={onCreateTagClick}
-            className="justify-start h-11 text-[15px] font-medium rounded-xl transition-all duration-300 hover:scale-[1.02] active:scale-[0.98]"
+            className="justify-start h-auto py-2 px-4 text-sm font-normal transition-all duration-300 ease"
           >
-            <Plus className="h-4 w-4 mr-2.5" />
+            <Plus className="h-4 w-4 mr-2" />
             创建标签
           </Button>
           <Button
             variant="ghost"
             size="sm"
             onClick={onManageTagsClick}
-            className="justify-start h-11 text-[15px] font-medium rounded-xl transition-all duration-300 hover:scale-[1.02] active:scale-[0.98]"
+            className="justify-start h-auto py-2 px-4 text-sm font-normal transition-all duration-300 ease"
           >
-            <Settings className="h-4 w-4 mr-2.5" />
+            <Settings className="h-4 w-4 mr-2" />
             管理标签
           </Button>
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto p-8">
+      <div className="flex-1 overflow-y-auto p-6">
         <div className="space-y-2">
           {tags.length === 0 ? (
-            <p className="text-[15px] text-muted-foreground text-center py-12 font-medium">
+            <p className="text-sm text-muted-foreground text-center py-12 font-normal">
               暂无标签
             </p>
           ) : (
@@ -70,10 +70,10 @@ export function Sidebar({
               <div
                 key={tag.id}
                 className={cn(
-                  "p-4 rounded-2xl cursor-pointer transition-all duration-300",
+                  "p-4 cursor-pointer transition-all duration-300 ease",
                   selectedTagId === tag.id
-                    ? "bg-accent shadow-sm scale-[1.02]"
-                    : "hover:bg-accent/60 hover:scale-[1.01] active:scale-[0.99]"
+                    ? "bg-accent"
+                    : "hover:bg-accent"
                 )}
                 onClick={() => onTagClick(tag.id)}
               >

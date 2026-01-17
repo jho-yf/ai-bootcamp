@@ -25,12 +25,12 @@ export function TicketCard({
   onTagClick,
 }: TicketCardProps) {
   return (
-    <Card className="group cursor-pointer transition-all duration-500 ease-out hover:shadow-xl hover:-translate-y-2 hover:border-border/80 bg-card/95 backdrop-blur-sm">
-      <CardHeader className="pb-5">
-        <div className="flex items-start justify-between gap-4">
+    <Card className="group cursor-pointer transition-all duration-300 ease">
+      <CardHeader className="pb-0">
+        <div className="flex items-start justify-between gap-6">
           <div className="flex-1 min-w-0">
             <h3
-              className={`text-[19px] font-semibold leading-[1.3] tracking-[-0.01em] ${
+              className={`text-2xl font-medium leading-[1.2] tracking-[-0.02em] ${
                 ticket.completed
                   ? "line-through text-muted-foreground opacity-50"
                   : "text-foreground"
@@ -46,33 +46,33 @@ export function TicketCard({
               e.stopPropagation();
               onToggleCompleted?.(ticket.id);
             }}
-            className="shrink-0 h-10 w-10 rounded-xl transition-all duration-300 hover:bg-accent/80 hover:scale-110 active:scale-95"
+            className="shrink-0 h-10 w-10 transition-all duration-300 ease hover:bg-accent"
             aria-label={ticket.completed ? "标记为未完成" : "标记为已完成"}
           >
             {ticket.completed ? (
-              <CheckCircle2 className="h-5 w-5 text-primary transition-all duration-300" />
+              <CheckCircle2 className="h-5 w-5 text-foreground transition-all duration-300 ease" />
             ) : (
-              <Circle className="h-5 w-5 text-muted-foreground transition-all duration-300 group-hover:text-primary" />
+              <Circle className="h-5 w-5 text-muted-foreground transition-all duration-300 ease group-hover:text-foreground" />
             )}
           </Button>
         </div>
       </CardHeader>
       {ticket.description && (
-        <CardContent className="pt-0 pb-5">
-          <p className="text-[15px] text-muted-foreground leading-[1.6] whitespace-pre-wrap line-clamp-3">
+        <CardContent className="pt-6 pb-0">
+          <p className="text-sm text-muted-foreground leading-[1.5] whitespace-pre-wrap line-clamp-3">
             {ticket.description}
           </p>
         </CardContent>
       )}
-      <CardFooter className="flex flex-col gap-5 pt-0 pb-6">
+      <CardFooter className="flex flex-col gap-6 pt-6 pb-0">
         {ticket.tags && ticket.tags.length > 0 && (
-          <div className="flex flex-wrap gap-2.5 w-full">
+          <div className="flex flex-wrap gap-2 w-full">
             {ticket.tags.map((tag) => (
               <TagBadge key={tag.id} tag={tag} onClick={() => onTagClick?.(tag.id)} />
             ))}
           </div>
         )}
-        <div className="flex gap-2.5 w-full justify-end pt-3 border-t border-border/30">
+        <div className="flex gap-2 w-full justify-end pt-6 border-t border-border">
           <Button
             variant="ghost"
             size="sm"
@@ -80,7 +80,7 @@ export function TicketCard({
               e.stopPropagation();
               onEdit?.(ticket.id);
             }}
-            className="h-9 px-4 text-[14px] font-medium rounded-lg transition-all duration-300 hover:bg-accent/80 hover:scale-105 active:scale-95"
+            className="h-auto px-4 py-2 text-sm font-normal transition-all duration-300 ease hover:bg-accent"
           >
             <Edit className="h-4 w-4 mr-2" />
             编辑
@@ -92,7 +92,7 @@ export function TicketCard({
               e.stopPropagation();
               onDelete?.(ticket.id);
             }}
-            className="h-9 px-4 text-[14px] font-medium text-destructive hover:text-destructive hover:bg-destructive/10 rounded-lg transition-all duration-300 hover:scale-105 active:scale-95"
+            className="h-auto px-4 py-2 text-sm font-normal text-foreground transition-all duration-300 ease hover:bg-accent"
           >
             <Trash2 className="h-4 w-4 mr-2" />
             删除
