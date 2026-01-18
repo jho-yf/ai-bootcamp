@@ -109,4 +109,6 @@ struct QueryResult {
 
 ```
 
-## 阶段 2 优化
+## speckit.analyze
+
+/speckit.analyze 仔细 review @w2-db-query 的代码，删除无用、冗余的代码，添加更多的 unit test，以及寻找 opportunity

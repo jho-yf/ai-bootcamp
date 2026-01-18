@@ -25,10 +25,7 @@ export function TagBadge({ tag, onClick, variant = "default", className }: TagBa
   return (
     <Badge
       variant={variant}
-      className={cn(
-        "cursor-pointer transition-all duration-300 ease hover:opacity-90",
-        className
-      )}
+      className={cn("cursor-pointer transition-all duration-300 ease hover:opacity-90", className)}
       style={style}
       onClick={onClick}
     >

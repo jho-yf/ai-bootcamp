@@ -1,4 +1,4 @@
-import { FullConfig } from '@playwright/test';
+import { FullConfig } from "@playwright/test";
 
 /**
  * 全局测试清理
@@ -6,7 +6,7 @@ import { FullConfig } from '@playwright/test';
  */
 async function globalTeardown(config: FullConfig) {
   // 可以在这里执行全局清理操作
-  console.log('🧹 Playwright E2E 测试全局清理...');
+  console.log("🧹 Playwright E2E 测试全局清理...");
 }
 
 export default globalTeardown;

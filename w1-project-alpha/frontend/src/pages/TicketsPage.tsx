@@ -200,10 +200,7 @@ export function TicketsPage() {
               <div className="flex-1 max-w-2xl">
                 <SearchBar value={searchQuery} onChange={setSearchQuery} />
               </div>
-              <Button
-                onClick={() => setTicketFormOpen(true)}
-                size="default"
-              >
+              <Button onClick={() => setTicketFormOpen(true)} size="default">
                 <Plus className="h-4 w-4 mr-2" />
                 创建 Ticket
               </Button>
@@ -237,10 +234,7 @@ export function TicketsPage() {
             ) : tickets.length === 0 ? (
               <div className="flex flex-col items-center justify-center h-[60vh]">
                 <p className="text-muted-foreground mb-12 text-lg font-normal">暂无 Ticket</p>
-                <Button
-                  onClick={() => setTicketFormOpen(true)}
-                  size="default"
-                >
+                <Button onClick={() => setTicketFormOpen(true)} size="default">
                   <Plus className="h-4 w-4 mr-2" />
                   创建第一个 Ticket
                 </Button>

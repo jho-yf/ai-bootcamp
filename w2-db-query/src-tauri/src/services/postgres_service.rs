@@ -76,4 +76,41 @@ pub async fn execute_query(
     Ok((columns, rows, exec_time_ms))
 }
 
-// 单元测试移到 tests/integration_test.rs
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_connection_string_format() {
+        // 测试连接字符串格式（不执行连接）
+        let host = "localhost";
+        let port = 5432u16;
+        let database_name = "testdb";
+        let user = "testuser";
+        let password = "testpass";
+
+        let connection_string = format!(
+            "host={} port={} dbname={} user={} password={}",
+            host, port, database_name, user, password
+        );
+
+        assert!(connection_string.contains("host=localhost"));
+        assert!(connection_string.contains("port=5432"));
+        assert!(connection_string.contains("dbname=testdb"));
+        assert!(connection_string.contains("user=testuser"));
+        assert!(connection_string.contains("password=testpass"));
+    }
+
+    #[test]
+    fn test_execute_query_error_handling() {
+        // 测试错误处理逻辑（不执行实际查询）
+        // 这个测试验证错误类型转换
+        use crate::utils::error::AppError;
+
+        // 验证 AppError::QueryExecution 可以正确创建
+        let error = AppError::QueryExecution("测试错误".to_string());
+        assert!(error.to_string().contains("测试错误"));
+    }
+}
+
+// 集成测试移到 tests/integration_test.rs

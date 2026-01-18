@@ -1,4 +1,4 @@
-import { test as base } from '@playwright/test';
+import { test as base } from "@playwright/test";
 
 /**
  * Playwright 测试 Fixtures
@@ -15,59 +15,85 @@ export const test = base.extend({
         (window as any).__TAURI__ = {
           core: {
             invoke: async (cmd: string, args?: any) => {
-              console.log('[Mock Tauri] invoke:', cmd, args);
+              console.log("[Mock Tauri] invoke:", cmd, args);
 
               // Mock 响应
               const mocks: Record<string, (args?: any) => any> = {
                 list_databases: () => [
                   {
-                    id: 'test-db-1',
-                    name: '测试数据库',
-                    host: 'localhost',
+                    id: "test-db-1",
+                    name: "测试数据库",
+                    host: "localhost",
                     port: 5432,
-                    databaseName: 'testdb',
-                    user: 'testuser',
-                    status: 'connected',
+                    databaseName: "testdb",
+                    user: "testuser",
+                    status: "connected",
                     createdAt: new Date().toISOString(),
                     updatedAt: new Date().toISOString(),
                   },
                 ],
                 test_connection: () => true,
                 add_database: (args) => ({
-                  id: 'test-db-new',
-                  name: args?.name || '新数据库',
-                  host: args?.host || 'localhost',
-                  port: args?.port || 5432,
-                  databaseName: args?.databaseName || 'testdb',
-                  user: args?.user || 'testuser',
-                  status: 'connected',
+                  id: "test-db-new",
+                  name: args?.request?.name || args?.name || "新数据库",
+                  host: args?.request?.host || args?.host || "localhost",
+                  port: args?.request?.port || args?.port || 5432,
+                  databaseName:
+                    args?.request?.databaseName ||
+                    args?.databaseName ||
+                    "testdb",
+                  user: args?.request?.user || args?.user || "testuser",
+                  status: "connected",
                   createdAt: new Date().toISOString(),
                   updatedAt: new Date().toISOString(),
                 }),
                 get_database_metadata: (args) => ({
-                  connectionId: args?.databaseId || 'test-db-1',
+                  connectionId: args?.databaseId || "test-db-1",
                   tables: [
                     {
-                      schema: 'public',
-                      name: 'users',
-                      tableType: 'BASE TABLE',
+                      schema: "public",
+                      name: "users",
+                      tableType: "BASE TABLE",
                       columns: [
                         {
-                          name: 'id',
-                          dataType: 'integer',
+                          name: "id",
+                          dataType: "integer",
                           nullable: false,
                           isPrimaryKey: true,
                           ordinalPosition: 1,
                         },
                         {
-                          name: 'name',
-                          dataType: 'character varying',
+                          name: "name",
+                          dataType: "character varying",
                           nullable: false,
                           isPrimaryKey: false,
                           ordinalPosition: 2,
                         },
                       ],
-                      primaryKeys: ['id'],
+                      primaryKeys: ["id"],
+                      foreignKeys: [],
+                    },
+                  ],
+                  views: [],
+                  extractedAt: new Date().toISOString(),
+                }),
+                refresh_metadata: (args) => ({
+                  connectionId: args?.databaseId || "test-db-1",
+                  tables: [
+                    {
+                      schema: "public",
+                      name: "users",
+                      tableType: "BASE TABLE",
+                      columns: [
+                        {
+                          name: "id",
+                          dataType: "integer",
+                          nullable: false,
+                          isPrimaryKey: true,
+                          ordinalPosition: 1,
+                        },
+                      ],
+                      primaryKeys: ["id"],
                       foreignKeys: [],
                     },
                   ],
@@ -75,15 +101,30 @@ export const test = base.extend({
                   extractedAt: new Date().toISOString(),
                 }),
                 run_sql_query: (args) => ({
-                  columns: ['id', 'name'],
+                  columns: ["id", "name"],
                   rows: [
-                    { id: 1, name: 'Alice' },
-                    { id: 2, name: 'Bob' },
+                    { id: 1, name: "Alice" },
+                    { id: 2, name: "Bob" },
                   ],
                   total: 2,
                   execTimeMs: 45,
-                  sql: args?.sql || 'SELECT * FROM users',
+                  sql: args?.request?.sql || args?.sql || "SELECT * FROM users",
                   truncated: false,
+                }),
+                generate_sql_from_nl: () => "SELECT * FROM users LIMIT 100",
+                run_nl_query: (args) => ({
+                  generatedSql: "SELECT * FROM users LIMIT 100",
+                  result: {
+                    columns: ["id", "name"],
+                    rows: [
+                      { id: 1, name: "Alice" },
+                      { id: 2, name: "Bob" },
+                    ],
+                    total: 2,
+                    execTimeMs: 120,
+                    sql: "SELECT * FROM users LIMIT 100",
+                    truncated: false,
+                  },
                 }),
               };
 
@@ -92,7 +133,7 @@ export const test = base.extend({
                 return handler(args);
               }
 
-              console.warn('[Mock Tauri] Unknown command:', cmd);
+              console.warn("[Mock Tauri] Unknown command:", cmd);
               return null;
             },
           },
@@ -104,4 +145,4 @@ export const test = base.extend({
   },
 });
 
-export { expect } from '@playwright/test';
+export { expect } from "@playwright/test";

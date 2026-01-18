@@ -61,7 +61,7 @@ export default defineConfig({
   webServer: {
     command: 'npm run dev',
     url: 'http://localhost:1420',
-    reuseExistingServer: !process.env.CI,
+    reuseExistingServer: true, // 始终重用现有服务器
     timeout: 120 * 1000,
     stdout: 'ignore',
     stderr: 'pipe',
