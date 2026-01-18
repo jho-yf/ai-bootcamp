@@ -2,10 +2,14 @@
  * DatabaseCard 组件
  * 显示单个数据库连接卡片
  */
-import React from 'react';
-import { Card, Tag, Button, Space, Popconfirm } from 'antd';
-import { DatabaseOutlined, DeleteOutlined, EditOutlined } from '@ant-design/icons';
-import type { DatabaseConnection } from '../services/types';
+import React from "react";
+import { Card, Tag, Button, Space, Popconfirm } from "antd";
+import {
+  DatabaseOutlined,
+  DeleteOutlined,
+  EditOutlined,
+} from "@ant-design/icons";
+import type { DatabaseConnection } from "../services/types";
 
 interface DatabaseCardProps {
   database: DatabaseConnection;
@@ -22,27 +26,27 @@ export const DatabaseCard: React.FC<DatabaseCardProps> = ({
 }) => {
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'connected':
-        return 'success';
-      case 'connecting':
-        return 'processing';
-      case 'failed':
-        return 'error';
+      case "connected":
+        return "success";
+      case "connecting":
+        return "processing";
+      case "failed":
+        return "error";
       default:
-        return 'default';
+        return "default";
     }
   };
 
   const getStatusText = (status: string) => {
     switch (status) {
-      case 'connected':
-        return '已连接';
-      case 'connecting':
-        return '连接中';
-      case 'failed':
-        return '连接失败';
+      case "connected":
+        return "已连接";
+      case "connecting":
+        return "连接中";
+      case "failed":
+        return "连接失败";
       default:
-        return '未连接';
+        return "未连接";
     }
   };
 
@@ -85,16 +89,16 @@ export const DatabaseCard: React.FC<DatabaseCardProps> = ({
         avatar={<DatabaseOutlined style={{ fontSize: 24 }} />}
         title={database.name}
         description={
-          <Space direction="vertical" size="small" style={{ width: '100%' }}>
+          <Space direction="vertical" size="small" style={{ width: "100%" }}>
             <div>
               <Tag color={getStatusColor(database.status)}>
                 {getStatusText(database.status)}
               </Tag>
             </div>
-            <div style={{ fontSize: 12, color: '#666' }}>
+            <div style={{ fontSize: 12, color: "#666" }}>
               {database.host}:{database.port} / {database.databaseName}
             </div>
-            <div style={{ fontSize: 12, color: '#999' }}>
+            <div style={{ fontSize: 12, color: "#999" }}>
               用户: {database.user}
             </div>
           </Space>

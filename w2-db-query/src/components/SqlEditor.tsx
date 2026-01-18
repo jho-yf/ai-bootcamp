@@ -2,8 +2,8 @@
  * SqlEditor 组件
  * Monaco Editor 包装器，配置 SQL 语法高亮
  */
-import React from 'react';
-import Editor from '@monaco-editor/react';
+import React from "react";
+import Editor from "@monaco-editor/react";
 
 interface SqlEditorProps {
   value: string;
@@ -15,7 +15,7 @@ interface SqlEditorProps {
 export const SqlEditor: React.FC<SqlEditorProps> = ({
   value,
   onChange,
-  height = '400px',
+  height = "400px",
   readOnly = false,
 }) => {
   const handleEditorDidMount = () => {
@@ -23,14 +23,16 @@ export const SqlEditor: React.FC<SqlEditorProps> = ({
   };
 
   return (
-    <div style={{
-      height: height === '100%' ? '100%' : height,
-      width: '100%',
-      padding: '0 16px',
-      boxSizing: 'border-box'
-    }}>
+    <div
+      style={{
+        height: height === "100%" ? "100%" : height,
+        width: "100%",
+        padding: "0 16px",
+        boxSizing: "border-box",
+      }}
+    >
       <Editor
-        height={height === '100%' ? '100%' : height}
+        height={height === "100%" ? "100%" : height}
         language="sql"
         theme="vs-dark"
         value={value}
@@ -39,10 +41,10 @@ export const SqlEditor: React.FC<SqlEditorProps> = ({
         options={{
           minimap: { enabled: false },
           fontSize: 14,
-          lineNumbers: 'on',
+          lineNumbers: "on",
           automaticLayout: true,
           readOnly,
-          wordWrap: 'on',
+          wordWrap: "on",
           scrollBeyondLastLine: false,
           suggestOnTriggerCharacters: true,
           quickSuggestions: true,

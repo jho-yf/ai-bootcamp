@@ -2,16 +2,17 @@
  * DatabaseList 页面
  * 显示所有数据库连接列表
  */
-import React, { useState } from 'react';
-import { Button, Row, Col, Empty } from 'antd';
-import { PlusOutlined } from '@ant-design/icons';
-import { DatabaseCard } from '../components/DatabaseCard';
-import { AddDatabaseDialog } from '../components/AddDatabaseDialog';
-import { useDatabases } from '../hooks/useDatabases';
-import type { DatabaseConnection, AddDatabaseRequest } from '../services/types';
+import React, { useState } from "react";
+import { Button, Row, Col, Empty } from "antd";
+import { PlusOutlined } from "@ant-design/icons";
+import { DatabaseCard } from "../components/DatabaseCard";
+import { AddDatabaseDialog } from "../components/AddDatabaseDialog";
+import { useDatabases } from "../hooks/useDatabases";
+import type { DatabaseConnection, AddDatabaseRequest } from "../services/types";
 
 export const DatabaseList: React.FC = () => {
-  const { databases, loading, addDatabase, updateDatabase, deleteDatabase } = useDatabases();
+  const { databases, loading, addDatabase, updateDatabase, deleteDatabase } =
+    useDatabases();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<DatabaseConnection | null>(null);
 
@@ -44,7 +45,14 @@ export const DatabaseList: React.FC = () => {
 
   return (
     <div style={{ padding: 24 }}>
-      <div style={{ marginBottom: 16, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+      <div
+        style={{
+          marginBottom: 16,
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+        }}
+      >
         <h1>数据库连接</h1>
         <Button type="primary" icon={<PlusOutlined />} onClick={handleAdd}>
           添加数据库连接

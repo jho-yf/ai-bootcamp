@@ -2,17 +2,30 @@
  * DatabaseExplorer 页面
  * 数据库结构浏览器：侧边栏显示元数据树，右侧显示详细信息或 SQL 查询
  */
-import React, { useState } from 'react';
-import { Layout, Button, Space, Card, message } from 'antd';
-import { ReloadOutlined, PlayCircleOutlined, ClearOutlined } from '@ant-design/icons';
-import { MetadataTree } from '../components/MetadataTree';
-import { SqlEditor } from '../components/SqlEditor';
-import { QueryResultTable } from '../components/QueryResultTable';
-import { LoadingIndicator } from '../components/LoadingIndicator';
-import { useDatabases } from '../hooks/useDatabases';
-import { useMetadata } from '../hooks/useMetadata';
-import { useQuery } from '../hooks/useQuery';
-import type { TableInfo, ViewInfo, RunQueryRequest } from '../services/types';
+import React, { useState } from "react";
+import { Layout, Button, Space, Card, message, Tabs } from "antd";
+import {
+  ReloadOutlined,
+  PlayCircleOutlined,
+  ClearOutlined,
+  ThunderboltOutlined,
+  EditOutlined,
+  CheckOutlined,
+} from "@ant-design/icons";
+import { MetadataTree } from "../components/MetadataTree";
+import { SqlEditor } from "../components/SqlEditor";
+import { NLQueryInput } from "../components/NLQueryInput";
+import { QueryResultTable } from "../components/QueryResultTable";
+import { LoadingIndicator } from "../components/LoadingIndicator";
+import { useDatabases } from "../hooks/useDatabases";
+import { useMetadata } from "../hooks/useMetadata";
+import { useQuery } from "../hooks/useQuery";
+import type {
+  TableInfo,
+  ViewInfo,
+  RunQueryRequest,
+  RunNLQueryRequest,
+} from "../services/types";
 
 const { Sider, Content } = Layout;
 
@@ -24,21 +37,35 @@ export const DatabaseExplorer: React.FC<DatabaseExplorerProps> = ({
   selectedDbId,
 }) => {
   const { databases } = useDatabases();
-  const { metadata, loading, loadMetadata, refreshMetadata } = useMetadata(selectedDbId);
-  const { result, loading: queryLoading, error, executeQuery, cancelQuery, clearResult } = useQuery();
+  const { metadata, loading, loadMetadata, refreshMetadata } =
+    useMetadata(selectedDbId);
+  const {
+    result,
+    loading: queryLoading,
+    error,
+    generatedSql,
+    executeQuery,
+    generateSqlFromNL,
+    executeNLQuery,
+    cancelQuery,
+    clearResult,
+  } = useQuery();
   const [selectedTable, setSelectedTable] = useState<TableInfo | null>(null);
-  const [sql, setSql] = useState('SELECT * FROM ');
+  const [sql, setSql] = useState("SELECT * FROM ");
+  const [activeTab, setActiveTab] = useState<"sql" | "nl">("sql");
+  const [nlPrompt, setNlPrompt] = useState("");
 
-  const currentDatabase = databases.find(db => db.id === selectedDbId);
+  const currentDatabase = databases.find((db) => db.id === selectedDbId);
 
   const handleRunQuery = async () => {
     if (!selectedDbId) {
-      message.warning('请先选择数据库连接');
+      message.warning("请先选择数据库连接");
       return;
     }
 
+    // 执行 SQL 编辑器中的 SQL（两个标签页都使用同一个 SQL 编辑器）
     if (!sql.trim()) {
-      message.warning('请输入 SQL 查询');
+      message.warning("请输入 SQL 查询");
       return;
     }
 
@@ -59,25 +86,91 @@ export const DatabaseExplorer: React.FC<DatabaseExplorerProps> = ({
     }
   };
 
-  // 监听 Ctrl+Enter 快捷键
+  // 处理自然语言生成 SQL
+  const handleGenerateSql = async (prompt: string): Promise<string> => {
+    if (!selectedDbId) {
+      throw new Error("请先选择数据库连接");
+    }
+
+    const request: RunNLQueryRequest = {
+      databaseId: selectedDbId,
+      prompt,
+    };
+
+    const generated = await generateSqlFromNL(request);
+    // 如果生成成功，自动切换到 SQL 编辑器并填充 SQL
+    if (generated) {
+      setSql(generated);
+      setActiveTab("sql");
+    }
+    return generated;
+  };
+
+  // 处理自然语言执行查询
+  const handleExecuteNL = async (prompt: string) => {
+    if (!selectedDbId) {
+      return;
+    }
+
+    const request: RunNLQueryRequest = {
+      databaseId: selectedDbId,
+      prompt,
+    };
+
+    await executeNLQuery(request);
+  };
+
+  // 处理"仅生成 SQL"按钮（在自然语言查询标签页的顶部按钮区域）
+  const handleGenerateFromTopBar = async () => {
+    if (!selectedDbId) {
+      message.warning("请先选择数据库连接");
+      return;
+    }
+
+    if (!nlPrompt.trim()) {
+      message.warning("请输入自然语言查询");
+      return;
+    }
+
+    await handleGenerateSql(nlPrompt.trim());
+  };
+
+  // 处理"生成并执行"按钮（在自然语言查询标签页的顶部按钮区域）
+  const handleExecuteFromTopBar = async () => {
+    if (!selectedDbId) {
+      message.warning("请先选择数据库连接");
+      return;
+    }
+
+    if (!nlPrompt.trim()) {
+      message.warning("请输入自然语言查询");
+      return;
+    }
+
+    await handleExecuteNL(nlPrompt.trim());
+  };
+
+  // 监听 Ctrl+Enter 快捷键（仅在 SQL 编辑器模式下）
   React.useEffect(() => {
     const handleExecute = () => {
-      if (selectedDbId && sql.trim()) {
+      if (activeTab === "sql" && selectedDbId && sql.trim()) {
         handleRunQuery();
       }
     };
 
-    window.addEventListener('execute-query', handleExecute);
+    window.addEventListener("execute-query", handleExecute);
     return () => {
-      window.removeEventListener('execute-query', handleExecute);
+      window.removeEventListener("execute-query", handleExecute);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedDbId, sql]);
+  }, [activeTab, selectedDbId, sql]);
 
   // 当选择表时，自动填充 SQL
   React.useEffect(() => {
     if (selectedTable) {
-      setSql(`SELECT * FROM ${selectedTable.schema ? `${selectedTable.schema}.` : ''}${selectedTable.name} LIMIT 100;`);
+      setSql(
+        `SELECT * FROM ${selectedTable.schema ? `${selectedTable.schema}.` : ""}${selectedTable.name} LIMIT 100;`,
+      );
     }
   }, [selectedTable]);
 
@@ -88,12 +181,14 @@ export const DatabaseExplorer: React.FC<DatabaseExplorerProps> = ({
   const handleViewSelect = (view: ViewInfo) => {
     setSelectedTable(null);
     // 当选择视图时，自动填充 SQL
-    setSql(`SELECT * FROM ${view.schema ? `${view.schema}.` : ''}${view.name} LIMIT 100;`);
+    setSql(
+      `SELECT * FROM ${view.schema ? `${view.schema}.` : ""}${view.name} LIMIT 100;`,
+    );
   };
 
   const handleTableDoubleClick = async (table: TableInfo) => {
     // 双击表时，填充 SQL 并执行查询
-    const sqlQuery = `SELECT * FROM ${table.schema ? `${table.schema}.` : ''}${table.name} LIMIT 100;`;
+    const sqlQuery = `SELECT * FROM ${table.schema ? `${table.schema}.` : ""}${table.name} LIMIT 100;`;
     setSql(sqlQuery);
     setSelectedTable(table);
 
@@ -111,7 +206,7 @@ export const DatabaseExplorer: React.FC<DatabaseExplorerProps> = ({
 
   const handleViewDoubleClick = async (view: ViewInfo) => {
     // 双击视图时，填充 SQL 并执行查询
-    const sqlQuery = `SELECT * FROM ${view.schema ? `${view.schema}.` : ''}${view.name} LIMIT 100;`;
+    const sqlQuery = `SELECT * FROM ${view.schema ? `${view.schema}.` : ""}${view.name} LIMIT 100;`;
     setSql(sqlQuery);
     setSelectedTable(null);
 
@@ -137,13 +232,20 @@ export const DatabaseExplorer: React.FC<DatabaseExplorerProps> = ({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedDbId]);
 
-
   return (
-    <Layout style={{ height: '100vh' }}>
-      <div style={{ padding: 16, borderBottom: '1px solid #f0f0f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+    <Layout style={{ height: "100vh" }}>
+      <div
+        style={{
+          padding: 16,
+          borderBottom: "1px solid #f0f0f0",
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+        }}
+      >
         <Space>
           <span style={{ fontWeight: 500, fontSize: 16 }}>
-            {currentDatabase?.name || '数据库'}
+            {currentDatabase?.name || "数据库"}
           </span>
           <Button
             icon={<ReloadOutlined />}
@@ -160,10 +262,10 @@ export const DatabaseExplorer: React.FC<DatabaseExplorerProps> = ({
         <Sider
           width={300}
           style={{
-            background: '#fff',
-            borderRight: '1px solid #f0f0f0',
-            overflow: 'auto',
-            height: 'calc(100vh - 73px)' // 减去顶部工具栏的高度
+            background: "#fff",
+            borderRight: "1px solid #f0f0f0",
+            overflow: "auto",
+            height: "calc(100vh - 73px)", // 减去顶部工具栏的高度
           }}
         >
           <MetadataTree
@@ -176,20 +278,33 @@ export const DatabaseExplorer: React.FC<DatabaseExplorerProps> = ({
           />
         </Sider>
 
-        <Content style={{ display: 'flex', flexDirection: 'column', overflow: 'hidden', height: 'calc(100vh - 73px)' }}>
-          <div style={{
-            display: 'flex',
-            flexDirection: 'column',
-            height: '100%',
-            overflow: 'hidden',
-            minHeight: 0
-          }}>
-            <div style={{
-              padding: 16,
-              borderBottom: '1px solid #f0f0f0',
-              flexShrink: 0
-            }}>
+        <Content
+          style={{
+            display: "flex",
+            flexDirection: "column",
+            overflow: "hidden",
+            height: "calc(100vh - 73px)",
+          }}
+        >
+          <div
+            style={{
+              display: "flex",
+              flexDirection: "column",
+              height: "100%",
+              overflow: "hidden",
+              minHeight: 0,
+            }}
+          >
+            {/* 按钮区域：根据标签页显示不同按钮 */}
+            <div
+              style={{
+                padding: 16,
+                borderBottom: "1px solid #f0f0f0",
+                flexShrink: 0,
+              }}
+            >
               <Space>
+                {/* 执行查询按钮：两个标签页都显示，执行 SQL 编辑器中的 SQL */}
                 <Button
                   type="primary"
                   icon={<PlayCircleOutlined />}
@@ -199,33 +314,151 @@ export const DatabaseExplorer: React.FC<DatabaseExplorerProps> = ({
                 >
                   执行查询 (Ctrl+Enter)
                 </Button>
-                <Button icon={<ClearOutlined />} onClick={clearResult} disabled={!result}>
+
+                {/* 自然语言查询按钮：始终显示，但在 SQL 编辑器标签页时禁用，放在执行查询和清除结果之间 */}
+                <Button
+                  type="default"
+                  icon={<ThunderboltOutlined />}
+                  onClick={handleGenerateFromTopBar}
+                  loading={queryLoading}
+                  disabled={
+                    activeTab !== "nl" || !selectedDbId || !nlPrompt.trim()
+                  }
+                  title={
+                    activeTab !== "nl"
+                      ? "请在自然语言查询标签页使用此功能"
+                      : undefined
+                  }
+                >
+                  仅生成 SQL
+                </Button>
+                <Button
+                  type="default"
+                  icon={<CheckOutlined />}
+                  onClick={handleExecuteFromTopBar}
+                  loading={queryLoading}
+                  disabled={
+                    activeTab !== "nl" || !selectedDbId || !nlPrompt.trim()
+                  }
+                  title={
+                    activeTab !== "nl"
+                      ? "请在自然语言查询标签页使用此功能"
+                      : undefined
+                  }
+                >
+                  生成并执行 (Ctrl+Enter)
+                </Button>
+
+                {/* 清除结果按钮：两个标签页都显示 */}
+                <Button
+                  icon={<ClearOutlined />}
+                  onClick={clearResult}
+                  disabled={!result}
+                >
                   清除结果
                 </Button>
               </Space>
             </div>
-            <div style={{
-              flex: '1 1 0',
-              minHeight: 0,
-              borderBottom: '1px solid #f0f0f0',
-              position: 'relative',
-              display: 'flex',
-              flexDirection: 'column'
-            }}>
-              <div style={{ flex: 1, minHeight: 0 }}>
-                <SqlEditor value={sql} onChange={(value) => setSql(value || '')} height="100%" />
-              </div>
-              <LoadingIndicator loading={queryLoading} onCancel={handleCancel} />
+            <div
+              style={{
+                flex: "1 1 0",
+                minHeight: 0,
+                borderBottom: "1px solid #f0f0f0",
+                position: "relative",
+                display: "flex",
+                flexDirection: "column",
+                overflow: "hidden",
+              }}
+            >
+              <Tabs
+                activeKey={activeTab}
+                onChange={(key) => setActiveTab(key as "sql" | "nl")}
+                items={[
+                  {
+                    key: "sql",
+                    label: (
+                      <span>
+                        <EditOutlined />
+                        SQL 编辑器
+                      </span>
+                    ),
+                    children: (
+                      <div
+                        style={{
+                          flex: 1,
+                          position: "relative",
+                          height: "100%",
+                          minHeight: 0,
+                        }}
+                      >
+                        <div style={{ height: "100%", minHeight: 0 }}>
+                          <SqlEditor
+                            value={sql}
+                            onChange={(value) => setSql(value || "")}
+                            height="100%"
+                          />
+                        </div>
+                        <LoadingIndicator
+                          loading={queryLoading}
+                          onCancel={handleCancel}
+                        />
+                      </div>
+                    ),
+                  },
+                  {
+                    key: "nl",
+                    label: (
+                      <span>
+                        <ThunderboltOutlined />
+                        自然语言查询
+                      </span>
+                    ),
+                    children: (
+                      <div
+                        style={{
+                          display: "flex",
+                          flexDirection: "column",
+                          height: "100%",
+                          padding: 16,
+                          overflow: "auto",
+                          minHeight: 0,
+                        }}
+                      >
+                        <NLQueryInput
+                          databaseId={selectedDbId}
+                          loading={queryLoading}
+                          generatedSql={generatedSql || undefined}
+                          prompt={nlPrompt}
+                          onPromptChange={setNlPrompt}
+                          onGenerate={handleGenerateSql}
+                          onExecute={handleExecuteNL}
+                          onClear={clearResult}
+                        />
+                      </div>
+                    ),
+                  },
+                ]}
+                style={{
+                  flex: 1,
+                  display: "flex",
+                  flexDirection: "column",
+                  overflow: "hidden",
+                  minHeight: 0,
+                }}
+                tabBarStyle={{ margin: 0, padding: "0 16px" }}
+              />
             </div>
-            <div style={{
-              flex: '1 1 0',
-              minHeight: 0,
-              overflow: 'auto',
-              padding: 16
-            }}>
+            <div
+              style={{
+                flex: "1 1 0",
+                minHeight: 0,
+                overflow: "auto",
+                padding: 16,
+              }}
+            >
               {error && (
-                <Card style={{ marginBottom: 16, borderColor: '#ff4d4f' }}>
-                  <div style={{ color: '#ff4d4f' }}>错误: {error}</div>
+                <Card style={{ marginBottom: 16, borderColor: "#ff4d4f" }}>
+                  <div style={{ color: "#ff4d4f" }}>错误: {error}</div>
                 </Card>
               )}
               <QueryResultTable result={result} loading={queryLoading} />

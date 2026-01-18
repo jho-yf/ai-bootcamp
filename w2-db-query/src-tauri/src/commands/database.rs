@@ -1,26 +1,23 @@
 /// 数据库连接管理 Commands
 use crate::models::database::{
-    AddDatabaseRequest, DatabaseConnection, ConnectionStatus, TestConnectionRequest,
+    AddDatabaseRequest, ConnectionStatus, DatabaseConnection, TestConnectionRequest,
     UpdateDatabaseRequest,
 };
-use crate::services::{cache_service, postgres_service, metadata_service};
+use crate::services::{cache_service, metadata_service, postgres_service};
 use crate::utils::error::AppError;
 use chrono::Utc;
-use uuid::Uuid;
 use serde_json;
+use uuid::Uuid;
 
 /// 获取所有数据库连接
 #[tauri::command]
 pub async fn list_databases() -> Result<Vec<DatabaseConnection>, String> {
-    cache_service::load_connections()
-        .map_err(|e| e.to_string())
+    cache_service::load_connections().map_err(|e| e.to_string())
 }
 
 /// 添加新数据库连接
 #[tauri::command]
-pub async fn add_database(
-    request: AddDatabaseRequest,
-) -> Result<DatabaseConnection, String> {
+pub async fn add_database(request: AddDatabaseRequest) -> Result<DatabaseConnection, String> {
     // 验证参数
     if request.name.is_empty() {
         return Err("连接名称不能为空".to_string());
@@ -68,26 +65,20 @@ pub async fn add_database(
     };
 
     // 保存到 SQLite
-    cache_service::save_connection(&connection)
-        .map_err(|e| format!("保存连接失败: {}", e))?;
+    cache_service::save_connection(&connection).map_err(|e| format!("保存连接失败: {}", e))?;
 
     // 提取并缓存元数据
-    let client = postgres_service::connect(
-        &host,
-        connection.port,
-        &database_name,
-        &user,
-        &password,
-    )
-    .await
-    .map_err(|e| format!("连接失败: {}", e))?;
+    let client =
+        postgres_service::connect(&host, connection.port, &database_name, &user, &password)
+            .await
+            .map_err(|e| format!("连接失败: {}", e))?;
 
     let metadata = metadata_service::extract_metadata(&client, &id)
         .await
         .map_err(|e| format!("提取元数据失败: {}", e))?;
 
-    let metadata_json = serde_json::to_string(&metadata)
-        .map_err(|e| format!("序列化元数据失败: {}", e))?;
+    let metadata_json =
+        serde_json::to_string(&metadata).map_err(|e| format!("序列化元数据失败: {}", e))?;
 
     cache_service::save_metadata(&id, &metadata_json)
         .map_err(|e| format!("保存元数据失败: {}", e))?;
@@ -97,12 +88,10 @@ pub async fn add_database(
 
 /// 更新数据库连接
 #[tauri::command]
-pub async fn update_database(
-    request: UpdateDatabaseRequest,
-) -> Result<DatabaseConnection, String> {
+pub async fn update_database(request: UpdateDatabaseRequest) -> Result<DatabaseConnection, String> {
     // 加载现有连接
-    let mut connections = cache_service::load_connections()
-        .map_err(|e| format!("加载连接失败: {}", e))?;
+    let mut connections =
+        cache_service::load_connections().map_err(|e| format!("加载连接失败: {}", e))?;
 
     let connection = connections
         .iter_mut()
@@ -154,8 +143,7 @@ pub async fn update_database(
     }
 
     // 保存更新
-    cache_service::save_connection(connection)
-        .map_err(|e| format!("更新连接失败: {}", e))?;
+    cache_service::save_connection(connection).map_err(|e| format!("更新连接失败: {}", e))?;
 
     Ok(connection.clone())
 }
@@ -163,8 +151,7 @@ pub async fn update_database(
 /// 删除数据库连接
 #[tauri::command]
 pub async fn delete_database(database_id: String) -> Result<(), String> {
-    cache_service::delete_connection(&database_id)
-        .map_err(|e| format!("删除连接失败: {}", e))?;
+    cache_service::delete_connection(&database_id).map_err(|e| format!("删除连接失败: {}", e))?;
     Ok(())
 }
 

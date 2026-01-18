@@ -2,10 +2,14 @@
  * useDatabases Hook
  * 封装数据库连接的 CRUD 操作
  */
-import { useState, useEffect, useCallback } from 'react';
-import { message } from 'antd';
-import type { DatabaseConnection, AddDatabaseRequest, UpdateDatabaseRequest } from '../services/types';
-import * as api from '../services/api';
+import { useState, useEffect, useCallback } from "react";
+import { message } from "antd";
+import type {
+  DatabaseConnection,
+  AddDatabaseRequest,
+  UpdateDatabaseRequest,
+} from "../services/types";
+import * as api from "../services/api";
 
 export function useDatabases() {
   const [databases, setDatabases] = useState<DatabaseConnection[]>([]);
@@ -20,7 +24,8 @@ export function useDatabases() {
       const data = await api.listDatabases();
       setDatabases(data);
     } catch (err) {
-      const errorMsg = err instanceof Error ? err.message : '加载数据库列表失败';
+      const errorMsg =
+        err instanceof Error ? err.message : "加载数据库列表失败";
       setError(errorMsg);
       message.error(errorMsg);
     } finally {
@@ -35,10 +40,11 @@ export function useDatabases() {
     try {
       const newDb = await api.addDatabase(request);
       setDatabases((prev) => [...prev, newDb]);
-      message.success('数据库连接添加成功');
+      message.success("数据库连接添加成功");
       return newDb;
     } catch (err) {
-      const errorMsg = err instanceof Error ? err.message : '添加数据库连接失败';
+      const errorMsg =
+        err instanceof Error ? err.message : "添加数据库连接失败";
       setError(errorMsg);
       message.error(errorMsg);
       throw err;
@@ -54,12 +60,13 @@ export function useDatabases() {
     try {
       const updated = await api.updateDatabase(request);
       setDatabases((prev) =>
-        prev.map((db) => (db.id === updated.id ? updated : db))
+        prev.map((db) => (db.id === updated.id ? updated : db)),
       );
-      message.success('数据库连接更新成功');
+      message.success("数据库连接更新成功");
       return updated;
     } catch (err) {
-      const errorMsg = err instanceof Error ? err.message : '更新数据库连接失败';
+      const errorMsg =
+        err instanceof Error ? err.message : "更新数据库连接失败";
       setError(errorMsg);
       message.error(errorMsg);
       throw err;
@@ -75,9 +82,10 @@ export function useDatabases() {
     try {
       await api.deleteDatabase(databaseId);
       setDatabases((prev) => prev.filter((db) => db.id !== databaseId));
-      message.success('数据库连接删除成功');
+      message.success("数据库连接删除成功");
     } catch (err) {
-      const errorMsg = err instanceof Error ? err.message : '删除数据库连接失败';
+      const errorMsg =
+        err instanceof Error ? err.message : "删除数据库连接失败";
       setError(errorMsg);
       message.error(errorMsg);
       throw err;
@@ -87,24 +95,27 @@ export function useDatabases() {
   }, []);
 
   // 测试连接
-  const testConnection = useCallback(async (request: Omit<AddDatabaseRequest, 'name'>) => {
-    setLoading(true);
-    setError(null);
-    try {
-      const result = await api.testConnection(request);
-      if (result) {
-        message.success('连接测试成功');
+  const testConnection = useCallback(
+    async (request: Omit<AddDatabaseRequest, "name">) => {
+      setLoading(true);
+      setError(null);
+      try {
+        const result = await api.testConnection(request);
+        if (result) {
+          message.success("连接测试成功");
+        }
+        return result;
+      } catch (err) {
+        const errorMsg = err instanceof Error ? err.message : "连接测试失败";
+        setError(errorMsg);
+        message.error(errorMsg);
+        return false;
+      } finally {
+        setLoading(false);
       }
-      return result;
-    } catch (err) {
-      const errorMsg = err instanceof Error ? err.message : '连接测试失败';
-      setError(errorMsg);
-      message.error(errorMsg);
-      return false;
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+    },
+    [],
+  );
 
   // 初始化时加载
   useEffect(() => {

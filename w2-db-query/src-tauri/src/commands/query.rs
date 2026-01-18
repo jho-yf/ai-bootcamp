@@ -1,28 +1,25 @@
 /// SQL 查询执行 Commands
 use crate::models::query::{QueryResult, RunQueryRequest};
 use crate::services::{cache_service, postgres_service, query_parser};
-use std::collections::HashMap;
+use chrono::{DateTime, NaiveDate, NaiveDateTime, NaiveTime, Utc};
 use serde_json::Value;
-use chrono::{DateTime, NaiveDateTime, NaiveDate, NaiveTime, Utc};
+use std::collections::HashMap;
 use uuid::Uuid;
 
 /// 执行 SQL 查询
 #[tauri::command]
 pub async fn run_sql_query(request: RunQueryRequest) -> Result<QueryResult, String> {
     // 检查是否为 DDL 语句
-    if query_parser::is_ddl_statement(&request.sql)
-        .map_err(|e| e.to_string())?
-    {
+    if query_parser::is_ddl_statement(&request.sql).map_err(|e| e.to_string())? {
         return Err("不允许执行 DDL 语句（CREATE/DROP/ALTER）".to_string());
     }
 
     // 解析并注入 LIMIT
-    let parsed_sql = query_parser::inject_limit(&request.sql)
-        .map_err(|e| e.to_string())?;
+    let parsed_sql = query_parser::inject_limit(&request.sql).map_err(|e| e.to_string())?;
 
     // 加载连接配置
-    let connections = cache_service::load_connections()
-        .map_err(|e| format!("加载连接失败: {}", e))?;
+    let connections =
+        cache_service::load_connections().map_err(|e| format!("加载连接失败: {}", e))?;
 
     let connection = connections
         .iter()
@@ -88,93 +85,91 @@ pub async fn run_sql_query(request: RunQueryRequest) -> Result<QueryResult, Stri
                 }
             } else {
                 match type_name {
-                "int4" | "int2" => {
-                    row.try_get::<_, i32>(i)
+                    "int4" | "int2" => row
+                        .try_get::<_, i32>(i)
                         .map(|v| Value::Number(v.into()))
-                        .unwrap_or(Value::Null)
-                }
-                "int8" => {
-                    row.try_get::<_, i64>(i)
+                        .unwrap_or(Value::Null),
+                    "int8" => row
+                        .try_get::<_, i64>(i)
                         .map(|v| Value::Number(v.into()))
-                        .unwrap_or(Value::Null)
-                }
-                "float4" | "float8" => {
-                    row.try_get::<_, f64>(i)
+                        .unwrap_or(Value::Null),
+                    "float4" | "float8" => row
+                        .try_get::<_, f64>(i)
                         .ok()
                         .and_then(|v| serde_json::Number::from_f64(v).map(Value::Number))
-                        .unwrap_or(Value::Null)
-                }
-                "bool" => {
-                    row.try_get::<_, bool>(i)
+                        .unwrap_or(Value::Null),
+                    "bool" => row
+                        .try_get::<_, bool>(i)
                         .map(Value::Bool)
-                        .unwrap_or(Value::Null)
-                }
-                "timestamp" => {
-                    // timestamp (without timezone)
-                    match row.try_get::<_, Option<NaiveDateTime>>(i) {
-                        Ok(Some(dt)) => Value::String(dt.format("%Y-%m-%d %H:%M:%S%.f").to_string()),
-                        Ok(None) => Value::Null,
-                        Err(_) => {
-                            // 如果 Option<NaiveDateTime> 失败，尝试直接读取
-                            row.try_get::<_, NaiveDateTime>(i)
-                                .map(|dt| Value::String(dt.format("%Y-%m-%d %H:%M:%S%.f").to_string()))
-                                .unwrap_or(Value::Null)
+                        .unwrap_or(Value::Null),
+                    "timestamp" => {
+                        // timestamp (without timezone)
+                        match row.try_get::<_, Option<NaiveDateTime>>(i) {
+                            Ok(Some(dt)) => {
+                                Value::String(dt.format("%Y-%m-%d %H:%M:%S%.f").to_string())
+                            }
+                            Ok(None) => Value::Null,
+                            Err(_) => {
+                                // 如果 Option<NaiveDateTime> 失败，尝试直接读取
+                                row.try_get::<_, NaiveDateTime>(i)
+                                    .map(|dt| {
+                                        Value::String(dt.format("%Y-%m-%d %H:%M:%S%.f").to_string())
+                                    })
+                                    .unwrap_or(Value::Null)
+                            }
                         }
                     }
-                }
-                "timestamptz" => {
-                    // timestamp with timezone - 尝试多种类型
-                    // 先尝试 DateTime<Utc>
-                    if let Ok(Some(dt)) = row.try_get::<_, Option<DateTime<Utc>>>(i) {
-                        Value::String(dt.format("%Y-%m-%d %H:%M:%S%.f UTC").to_string())
-                    } else if let Ok(dt) = row.try_get::<_, DateTime<Utc>>(i) {
-                        Value::String(dt.format("%Y-%m-%d %H:%M:%S%.f UTC").to_string())
-                    } else if let Ok(Some(dt)) = row.try_get::<_, Option<NaiveDateTime>>(i) {
-                        // 如果 timestamptz 被读取为 NaiveDateTime
-                        Value::String(dt.format("%Y-%m-%d %H:%M:%S%.f").to_string())
-                    } else {
-                        Value::Null
+                    "timestamptz" => {
+                        // timestamp with timezone - 尝试多种类型
+                        // 先尝试 DateTime<Utc>
+                        if let Ok(Some(dt)) = row.try_get::<_, Option<DateTime<Utc>>>(i) {
+                            Value::String(dt.format("%Y-%m-%d %H:%M:%S%.f UTC").to_string())
+                        } else if let Ok(dt) = row.try_get::<_, DateTime<Utc>>(i) {
+                            Value::String(dt.format("%Y-%m-%d %H:%M:%S%.f UTC").to_string())
+                        } else if let Ok(Some(dt)) = row.try_get::<_, Option<NaiveDateTime>>(i) {
+                            // 如果 timestamptz 被读取为 NaiveDateTime
+                            Value::String(dt.format("%Y-%m-%d %H:%M:%S%.f").to_string())
+                        } else {
+                            Value::Null
+                        }
                     }
-                }
-                "date" => {
-                    // date
-                    match row.try_get::<_, Option<NaiveDate>>(i) {
-                        Ok(Some(date)) => Value::String(date.format("%Y-%m-%d").to_string()),
-                        Ok(None) => Value::Null,
-                        Err(_) => {
-                            row.try_get::<_, NaiveDate>(i)
+                    "date" => {
+                        // date
+                        match row.try_get::<_, Option<NaiveDate>>(i) {
+                            Ok(Some(date)) => Value::String(date.format("%Y-%m-%d").to_string()),
+                            Ok(None) => Value::Null,
+                            Err(_) => row
+                                .try_get::<_, NaiveDate>(i)
                                 .map(|date| Value::String(date.format("%Y-%m-%d").to_string()))
-                                .unwrap_or(Value::Null)
+                                .unwrap_or(Value::Null),
                         }
                     }
-                }
-                "time" | "timetz" => {
-                    // time (with or without timezone)
-                    match row.try_get::<_, Option<NaiveTime>>(i) {
-                        Ok(Some(time)) => Value::String(time.format("%H:%M:%S%.f").to_string()),
-                        Ok(None) => Value::Null,
-                        Err(_) => {
-                            row.try_get::<_, NaiveTime>(i)
+                    "time" | "timetz" => {
+                        // time (with or without timezone)
+                        match row.try_get::<_, Option<NaiveTime>>(i) {
+                            Ok(Some(time)) => Value::String(time.format("%H:%M:%S%.f").to_string()),
+                            Ok(None) => Value::Null,
+                            Err(_) => row
+                                .try_get::<_, NaiveTime>(i)
                                 .map(|time| Value::String(time.format("%H:%M:%S%.f").to_string()))
-                                .unwrap_or(Value::Null)
+                                .unwrap_or(Value::Null),
                         }
                     }
-                }
-                "json" | "jsonb" => {
-                    // JSON 类型先作为文本读取，然后解析
-                    match row.try_get::<_, String>(i) {
-                        Ok(json_str) => {
-                            serde_json::from_str(&json_str).unwrap_or(Value::String(json_str))
+                    "json" | "jsonb" => {
+                        // JSON 类型先作为文本读取，然后解析
+                        match row.try_get::<_, String>(i) {
+                            Ok(json_str) => {
+                                serde_json::from_str(&json_str).unwrap_or(Value::String(json_str))
+                            }
+                            Err(_) => Value::Null,
                         }
-                        Err(_) => Value::Null,
                     }
-                }
-                _ => {
-                    // 默认作为文本处理
-                    row.try_get::<_, String>(i)
-                        .map(Value::String)
-                        .unwrap_or(Value::Null)
-                }
+                    _ => {
+                        // 默认作为文本处理
+                        row.try_get::<_, String>(i)
+                            .map(Value::String)
+                            .unwrap_or(Value::Null)
+                    }
                 }
             };
             row_map.insert(col_name.clone(), value);
@@ -185,14 +180,26 @@ pub async fn run_sql_query(request: RunQueryRequest) -> Result<QueryResult, Stri
     let total = result_rows.len();
     let truncated = total >= 100;
 
-    Ok(QueryResult {
+    let result = QueryResult {
         columns,
         rows: result_rows,
         total,
         exec_time_ms,
-        sql: parsed_sql,
+        sql: parsed_sql.clone(),
         truncated,
-    })
+    };
+
+    // 保存查询历史（SQL 查询类型）
+    let _ = cache_service::save_query_history(
+        &request.database_id,
+        "sql",
+        Some(&parsed_sql),
+        None,
+        Some(exec_time_ms),
+        "success",
+    );
+
+    Ok(result)
 }
 
 /// 取消正在执行的查询（简化实现：返回成功）

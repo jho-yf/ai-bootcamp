@@ -133,14 +133,20 @@ mod tests {
         // 如果解析失败，至少验证我们的逻辑能检测到 GRANT 关键字
         if grant_result.is_err() {
             // 验证字符串检测逻辑
-            assert!("GRANT SELECT ON TABLE test TO user".trim().to_uppercase().starts_with("GRANT"));
+            assert!("GRANT SELECT ON TABLE test TO user"
+                .trim()
+                .to_uppercase()
+                .starts_with("GRANT"));
         } else {
             assert!(grant_result.unwrap());
         }
 
         let revoke_result = is_ddl_statement("REVOKE SELECT ON TABLE test FROM user");
         if revoke_result.is_err() {
-            assert!("REVOKE SELECT ON TABLE test FROM user".trim().to_uppercase().starts_with("REVOKE"));
+            assert!("REVOKE SELECT ON TABLE test FROM user"
+                .trim()
+                .to_uppercase()
+                .starts_with("REVOKE"));
         } else {
             assert!(revoke_result.unwrap());
         }

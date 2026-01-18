@@ -1,3 +1,4 @@
+use std::env;
 /// 集成测试：需要 PostgreSQL 数据库
 ///
 /// 运行这些测试有两种方式：
@@ -18,17 +19,12 @@
 /// ```
 ///
 /// 注意：这些测试会执行真实的数据库操作
-
 use w2_db_query_lib::services::postgres_service;
-use std::env;
 
 /// 从环境变量获取测试数据库配置
 fn get_test_db_config() -> Option<(String, u16, String, String, String)> {
     let host = env::var("TEST_DB_HOST").ok()?;
-    let port = env::var("TEST_DB_PORT")
-        .ok()?
-        .parse::<u16>()
-        .ok()?;
+    let port = env::var("TEST_DB_PORT").ok()?.parse::<u16>().ok()?;
     let database_name = env::var("TEST_DB_NAME").ok()?;
     let user = env::var("TEST_DB_USER").ok()?;
     let password = env::var("TEST_DB_PASSWORD").ok()?;
@@ -55,7 +51,8 @@ async fn test_test_connection() {
         return;
     };
 
-    let result = postgres_service::test_connection(&host, port, &database_name, &user, &password).await;
+    let result =
+        postgres_service::test_connection(&host, port, &database_name, &user, &password).await;
     assert!(result.is_ok(), "连接测试应该成功");
     assert_eq!(result.unwrap(), true);
 }
@@ -72,33 +69,31 @@ async fn test_execute_query() {
         .expect("应该能够连接到数据库");
 
     // 创建测试表
-    client.execute(
-        "CREATE TABLE IF NOT EXISTS test_table (id SERIAL PRIMARY KEY, name TEXT)",
-        &[],
-    )
-    .await
-    .expect("应该能够创建表");
+    client
+        .execute(
+            "CREATE TABLE IF NOT EXISTS test_table (id SERIAL PRIMARY KEY, name TEXT)",
+            &[],
+        )
+        .await
+        .expect("应该能够创建表");
 
     // 清理旧数据
-    client.execute("DELETE FROM test_table", &[])
-        .await
-        .ok();
+    client.execute("DELETE FROM test_table", &[]).await.ok();
 
     // 插入测试数据
-    client.execute(
-        "INSERT INTO test_table (name) VALUES ($1), ($2)",
-        &[&"Alice", &"Bob"],
-    )
-    .await
-    .expect("应该能够插入数据");
+    client
+        .execute(
+            "INSERT INTO test_table (name) VALUES ($1), ($2)",
+            &[&"Alice", &"Bob"],
+        )
+        .await
+        .expect("应该能够插入数据");
 
     // 执行查询
-    let (columns, rows, exec_time_ms) = postgres_service::execute_query(
-        &client,
-        "SELECT id, name FROM test_table ORDER BY id",
-    )
-    .await
-    .expect("应该能够执行查询");
+    let (columns, rows, exec_time_ms) =
+        postgres_service::execute_query(&client, "SELECT id, name FROM test_table ORDER BY id")
+            .await
+            .expect("应该能够执行查询");
 
     // 验证结果
     assert_eq!(columns, vec!["id", "name"]);

@@ -1,6 +1,6 @@
+use chrono::{DateTime, Utc};
 /// 数据库元数据模型
 use serde::{Deserialize, Serialize};
-use chrono::{DateTime, Utc};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]

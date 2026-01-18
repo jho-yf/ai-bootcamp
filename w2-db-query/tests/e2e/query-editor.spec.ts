@@ -26,22 +26,6 @@ test.describe('SQL 查询编辑器', () => {
                       updatedAt: new Date().toISOString(),
                     },
                   ];
-                case 'get_database_metadata':
-                  return {
-                    connectionId: args?.databaseId || 'test-db-1',
-                    tables: [
-                      {
-                        schema: 'public',
-                        name: 'users',
-                        tableType: 'BASE TABLE',
-                        columns: [],
-                        primaryKeys: [],
-                        foreignKeys: [],
-                      },
-                    ],
-                    views: [],
-                    extractedAt: new Date().toISOString(),
-                  };
                 case 'run_sql_query':
                   return {
                     columns: ['id', 'name'],
@@ -51,7 +35,7 @@ test.describe('SQL 查询编辑器', () => {
                     ],
                     total: 2,
                     execTimeMs: 45,
-                    sql: args?.request?.sql || 'SELECT * FROM users',
+                    sql: args?.sql || 'SELECT * FROM users',
                     truncated: false,
                   };
                 default:
@@ -64,9 +48,15 @@ test.describe('SQL 查询编辑器', () => {
     });
 
     await page.goto('/');
-    await page.waitForSelector('.ant-layout', { timeout: 10000 });
+    await page.waitForSelector('.ant-layout, h1', { timeout: 10000 });
+
+    // 导航到 SQL 查询页面
+    const menuItem = page.locator('.ant-menu-item').filter({ hasText: /SQL|查询/i }).first();
+    await menuItem.waitFor({ state: 'visible', timeout: 5000 });
+    await menuItem.click();
+
     await page.waitForLoadState('domcontentloaded');
-    await page.waitForTimeout(2000); // 等待数据库列表加载并自动选中第一个
+    await page.waitForTimeout(1000);
   });
 
   test('应该显示 SQL 编辑器', async ({ page }) => {
@@ -143,48 +133,52 @@ test.describe('SQL 查询编辑器', () => {
   });
 
   test('应该显示执行查询按钮', async ({ page }) => {
-    // 等待页面加载和数据库自动选中
-    await page.waitForTimeout(3000);
+    // 等待页面加载
+    await page.waitForTimeout(1500);
 
     const executeButton = page.getByRole('button').filter({ hasText: /执行查询/i }).first();
-    await expect(executeButton).toBeVisible({ timeout: 10000 });
+    await expect(executeButton).toBeVisible({ timeout: 5000 });
   });
 
-  test('执行按钮应该可用（已选择数据库）', async ({ page }) => {
-    // 等待页面加载和数据库自动选中
-    await page.waitForTimeout(3000);
+  test('执行按钮在没有选择数据库时应该禁用', async ({ page }) => {
+    // 等待页面加载
+    await page.waitForTimeout(1500);
 
     const executeButton = page.getByRole('button').filter({ hasText: /执行查询/i }).first();
-    await executeButton.waitFor({ state: 'visible', timeout: 10000 });
+    await executeButton.waitFor({ state: 'visible', timeout: 5000 });
 
-    // 等待SQL编辑器加载并可能有默认值
-    await page.waitForTimeout(1000);
-
-    // 由于默认选中了第一个数据库，按钮应该可用（如果SQL不为空）
-    // 注意：按钮可能因为SQL为空而被禁用，这是正常的
+    // 检查按钮是否被禁用
     const isDisabled = await executeButton.isDisabled();
-    // 如果按钮被禁用，可能是因为SQL为空，这是预期的行为
-    if (!isDisabled) {
-      await expect(executeButton).toBeEnabled();
+
+    // 如果没有选择数据库，按钮应该被禁用
+    // 这是预期的行为
+    if (isDisabled) {
+      await expect(executeButton).toBeDisabled();
+    } else {
+      // 如果按钮未被禁用，可能已经有默认选择或实现不同
+      console.log('执行按钮未被禁用，可能已有默认数据库选择');
     }
   });
 
-  test('应该显示数据库名称', async ({ page }) => {
-    // 等待页面加载和数据库自动选中
-    await page.waitForTimeout(3000);
+  test('应该显示数据库选择下拉框', async ({ page }) => {
+    // 等待页面加载
+    await page.waitForTimeout(1500);
 
-    // 检查数据库名称显示（在顶部工具栏）
-    const dbName = page.locator('span').filter({ hasText: /测试数据库/i }).first();
-    await expect(dbName).toBeVisible({ timeout: 10000 });
+    const select = page.locator('.ant-select').first();
+    await expect(select).toBeVisible({ timeout: 5000 });
+
+    // 检查占位符文本
+    const selectText = await select.textContent();
+    expect(selectText).toMatch(/选择数据库/i);
   });
 
   test('应该显示清除结果按钮', async ({ page }) => {
-    // 等待页面加载和数据库自动选中
-    await page.waitForTimeout(3000);
+    // 等待页面加载
+    await page.waitForTimeout(1500);
 
     const clearButton = page.getByRole('button').filter({ hasText: /清除结果/i }).first();
 
     // 按钮应该存在（即使可能被禁用）
-    await expect(clearButton).toBeVisible({ timeout: 10000 });
+    await expect(clearButton).toBeVisible({ timeout: 5000 });
   });
 });

@@ -89,6 +89,18 @@ anyhow = "1.0"
 ```bash
 # OpenAI API Key（用于自然语言查询）
 OPENAI_API_KEY=sk-your-api-key-here
+
+# OpenAI API Base URL（可选，默认为官方 endpoint）
+# 如果使用自定义代理或其他兼容的 OpenAI API 服务，可以设置此变量
+# OPENAI_API_BASE=https://api.openai.com/v1
+# OPENAI_API_BASE=https://your-proxy.com/v1
+
+# OpenAI 模型名称（可选，默认为 gpt-4o-mini）
+# 根据你使用的 API 服务，可能需要设置不同的模型名称
+# 官方 OpenAI API: gpt-4o-mini, gpt-4, gpt-3.5-turbo
+# 其他服务可能需要不同的模型名称，请参考对应的 API 文档
+# OPENAI_MODEL=gpt-4o-mini
+# OPENAI_MODEL=glm-4  # 对于某些国内服务
 ```
 
 ### 5. 运行开发服务器
@@ -331,8 +343,11 @@ npm run tauri build
 ### Q3: OpenAI API 调用失败
 **A**: 检查：
 1. `.env` 文件中的 `OPENAI_API_KEY` 是否正确
-2. 网络是否能访问 OpenAI API
-3. API 配额是否充足
+2. 如果使用自定义 endpoint，检查 `OPENAI_API_BASE` 是否正确设置
+3. 如果使用自定义 API 服务，检查 `OPENAI_MODEL` 模型名称是否正确（某些服务需要特定的模型名称）
+4. 网络是否能访问 OpenAI API（或自定义 endpoint）
+5. API 配额是否充足
+6. 查看控制台错误信息，确认是认证问题、模型问题还是网络问题
 
 ### Q4: SQLite 数据库文件在哪里？
 **A**: `./db_query.db`（项目根目录）。首次运行应用时自动创建。

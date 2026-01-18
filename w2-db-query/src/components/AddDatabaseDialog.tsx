@@ -2,11 +2,11 @@
  * AddDatabaseDialog 组件
  * 添加/编辑数据库连接的表单对话框
  */
-import React, { useEffect, useState } from 'react';
-import { Modal, Form, Input, InputNumber, Button, Space, message } from 'antd';
-import { ThunderboltOutlined } from '@ant-design/icons';
-import type { DatabaseConnection, AddDatabaseRequest } from '../services/types';
-import * as api from '../services/api';
+import React, { useEffect, useState } from "react";
+import { Modal, Form, Input, InputNumber, Button, Space, message } from "antd";
+import { ThunderboltOutlined } from "@ant-design/icons";
+import type { DatabaseConnection, AddDatabaseRequest } from "../services/types";
+import * as api from "../services/api";
 
 interface AddDatabaseDialogProps {
   open: boolean;
@@ -34,7 +34,7 @@ export const AddDatabaseDialog: React.FC<AddDatabaseDialogProps> = ({
         port: editing.port,
         databaseName: editing.databaseName,
         user: editing.user,
-        password: '', // 不显示密码
+        password: "", // 不显示密码
       });
     } else {
       form.resetFields();
@@ -46,7 +46,13 @@ export const AddDatabaseDialog: React.FC<AddDatabaseDialogProps> = ({
   const handleTestConnection = async () => {
     try {
       // 验证必填字段（除了 name）
-      const values = await form.validateFields(['host', 'port', 'databaseName', 'user', 'password']);
+      const values = await form.validateFields([
+        "host",
+        "port",
+        "databaseName",
+        "user",
+        "password",
+      ]);
 
       setTesting(true);
 
@@ -59,9 +65,9 @@ export const AddDatabaseDialog: React.FC<AddDatabaseDialogProps> = ({
       });
 
       if (result) {
-        message.success('连接测试成功！');
+        message.success("连接测试成功！");
       } else {
-        message.error('连接测试失败');
+        message.error("连接测试失败");
       }
     } catch (error) {
       // 错误已在 api.ts 中处理并显示 message
@@ -88,7 +94,7 @@ export const AddDatabaseDialog: React.FC<AddDatabaseDialogProps> = ({
 
   return (
     <Modal
-      title={editing ? '编辑数据库连接' : '添加数据库连接'}
+      title={editing ? "编辑数据库连接" : "添加数据库连接"}
       open={open}
       onOk={handleOk}
       onCancel={handleCancel}
@@ -123,7 +129,7 @@ export const AddDatabaseDialog: React.FC<AddDatabaseDialogProps> = ({
         <Form.Item
           name="name"
           label="连接名称"
-          rules={[{ required: true, message: '请输入连接名称' }]}
+          rules={[{ required: true, message: "请输入连接名称" }]}
         >
           <Input placeholder="例如：生产数据库" />
         </Form.Item>
@@ -131,7 +137,7 @@ export const AddDatabaseDialog: React.FC<AddDatabaseDialogProps> = ({
         <Form.Item
           name="host"
           label="主机地址"
-          rules={[{ required: true, message: '请输入主机地址' }]}
+          rules={[{ required: true, message: "请输入主机地址" }]}
         >
           <Input placeholder="localhost 或 IP 地址" />
         </Form.Item>
@@ -140,17 +146,22 @@ export const AddDatabaseDialog: React.FC<AddDatabaseDialogProps> = ({
           name="port"
           label="端口"
           rules={[
-            { required: true, message: '请输入端口' },
-            { type: 'number', min: 1, max: 65535, message: '端口必须在 1-65535 之间' },
+            { required: true, message: "请输入端口" },
+            {
+              type: "number",
+              min: 1,
+              max: 65535,
+              message: "端口必须在 1-65535 之间",
+            },
           ]}
         >
-          <InputNumber style={{ width: '100%' }} placeholder="5432" />
+          <InputNumber style={{ width: "100%" }} placeholder="5432" />
         </Form.Item>
 
         <Form.Item
           name="databaseName"
           label="数据库名"
-          rules={[{ required: true, message: '请输入数据库名' }]}
+          rules={[{ required: true, message: "请输入数据库名" }]}
         >
           <Input placeholder="数据库名称" />
         </Form.Item>
@@ -158,7 +169,7 @@ export const AddDatabaseDialog: React.FC<AddDatabaseDialogProps> = ({
         <Form.Item
           name="user"
           label="用户名"
-          rules={[{ required: true, message: '请输入用户名' }]}
+          rules={[{ required: true, message: "请输入用户名" }]}
         >
           <Input placeholder="数据库用户名" />
         </Form.Item>
@@ -166,7 +177,7 @@ export const AddDatabaseDialog: React.FC<AddDatabaseDialogProps> = ({
         <Form.Item
           name="password"
           label="密码"
-          rules={[{ required: true, message: '请输入密码' }]}
+          rules={[{ required: true, message: "请输入密码" }]}
         >
           <Input.Password placeholder="数据库密码" />
         </Form.Item>

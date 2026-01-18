@@ -4,7 +4,11 @@
  */
 
 // 数据库连接状态
-export type ConnectionStatus = 'disconnected' | 'connecting' | 'connected' | 'failed';
+export type ConnectionStatus =
+  | "disconnected"
+  | "connecting"
+  | "connected"
+  | "failed";
 
 // 数据库连接
 export interface DatabaseConnection {

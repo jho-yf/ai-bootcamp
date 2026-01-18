@@ -2,10 +2,10 @@
  * MetadataTree 组件
  * 使用 Ant Design Tree 显示数据库表和视图的树形结构
  */
-import React, { useMemo } from 'react';
-import { Tree, Spin, Empty } from 'antd';
-import { TableOutlined, EyeOutlined } from '@ant-design/icons';
-import type { DatabaseMetadata, TableInfo, ViewInfo } from '../services/types';
+import React, { useMemo } from "react";
+import { Tree, Spin, Empty } from "antd";
+import { TableOutlined, EyeOutlined } from "@ant-design/icons";
+import type { DatabaseMetadata, TableInfo, ViewInfo } from "../services/types";
 
 interface MetadataTreeProps {
   metadata: DatabaseMetadata | null;
@@ -29,15 +29,17 @@ export const MetadataTree: React.FC<MetadataTreeProps> = ({
 
     const tables: any[] = metadata.tables.map((table) => ({
       title: (
-        <span style={{ display: 'flex', alignItems: 'center', minWidth: 0 }}>
+        <span style={{ display: "flex", alignItems: "center", minWidth: 0 }}>
           <TableOutlined style={{ marginRight: 8, flexShrink: 0 }} />
-          <span style={{
-            overflow: 'hidden',
-            textOverflow: 'ellipsis',
-            whiteSpace: 'nowrap',
-            flex: 1,
-            minWidth: 0
-          }}>
+          <span
+            style={{
+              overflow: "hidden",
+              textOverflow: "ellipsis",
+              whiteSpace: "nowrap",
+              flex: 1,
+              minWidth: 0,
+            }}
+          >
             {table.name}
           </span>
         </span>
@@ -46,18 +48,28 @@ export const MetadataTree: React.FC<MetadataTreeProps> = ({
       isLeaf: false,
       children: table.columns.map((col) => ({
         title: (
-          <span style={{ display: 'flex', alignItems: 'center', minWidth: 0 }}>
-            <span style={{
-              overflow: 'hidden',
-              textOverflow: 'ellipsis',
-              whiteSpace: 'nowrap',
-              flex: 1,
-              minWidth: 0
-            }}>
+          <span style={{ display: "flex", alignItems: "center", minWidth: 0 }}>
+            <span
+              style={{
+                overflow: "hidden",
+                textOverflow: "ellipsis",
+                whiteSpace: "nowrap",
+                flex: 1,
+                minWidth: 0,
+              }}
+            >
               {col.name} ({col.dataType})
             </span>
-            {col.isPrimaryKey && <span style={{ color: '#1890ff', marginLeft: 8, flexShrink: 0 }}>PK</span>}
-            {!col.nullable && <span style={{ color: '#ff4d4f', marginLeft: 8, flexShrink: 0 }}>NOT NULL</span>}
+            {col.isPrimaryKey && (
+              <span style={{ color: "#1890ff", marginLeft: 8, flexShrink: 0 }}>
+                PK
+              </span>
+            )}
+            {!col.nullable && (
+              <span style={{ color: "#ff4d4f", marginLeft: 8, flexShrink: 0 }}>
+                NOT NULL
+              </span>
+            )}
           </span>
         ),
         key: `col-${table.schema}-${table.name}-${col.name}`,
@@ -68,15 +80,17 @@ export const MetadataTree: React.FC<MetadataTreeProps> = ({
 
     const views: any[] = metadata.views.map((view) => ({
       title: (
-        <span style={{ display: 'flex', alignItems: 'center', minWidth: 0 }}>
+        <span style={{ display: "flex", alignItems: "center", minWidth: 0 }}>
           <EyeOutlined style={{ marginRight: 8, flexShrink: 0 }} />
-          <span style={{
-            overflow: 'hidden',
-            textOverflow: 'ellipsis',
-            whiteSpace: 'nowrap',
-            flex: 1,
-            minWidth: 0
-          }}>
+          <span
+            style={{
+              overflow: "hidden",
+              textOverflow: "ellipsis",
+              whiteSpace: "nowrap",
+              flex: 1,
+              minWidth: 0,
+            }}
+          >
             {view.name}
           </span>
         </span>
@@ -85,12 +99,14 @@ export const MetadataTree: React.FC<MetadataTreeProps> = ({
       isLeaf: false,
       children: view.columns.map((col) => ({
         title: (
-          <span style={{
-            overflow: 'hidden',
-            textOverflow: 'ellipsis',
-            whiteSpace: 'nowrap',
-            display: 'block'
-          }}>
+          <span
+            style={{
+              overflow: "hidden",
+              textOverflow: "ellipsis",
+              whiteSpace: "nowrap",
+              display: "block",
+            }}
+          >
             {col.name} ({col.dataType})
           </span>
         ),
@@ -102,19 +118,19 @@ export const MetadataTree: React.FC<MetadataTreeProps> = ({
 
     const data = [
       {
-        title: '表',
-        key: 'tables',
+        title: "表",
+        key: "tables",
         children: tables,
       },
       {
-        title: '视图',
-        key: 'views',
+        title: "视图",
+        key: "views",
         children: views,
       },
     ];
 
     // 默认展开到表层级：只展开 "表" 和 "视图" 节点，不展开具体的表和视图
-    const expandedKeys = ['tables', 'views'];
+    const expandedKeys = ["tables", "views"];
 
     return { treeData: data, defaultExpandedKeys: expandedKeys };
   }, [metadata]);
@@ -138,7 +154,7 @@ export const MetadataTree: React.FC<MetadataTreeProps> = ({
 
   if (loading) {
     return (
-      <div style={{ textAlign: 'center', padding: 50 }}>
+      <div style={{ textAlign: "center", padding: 50 }}>
         <Spin size="large" />
       </div>
     );
@@ -155,7 +171,7 @@ export const MetadataTree: React.FC<MetadataTreeProps> = ({
       treeData={treeData}
       onSelect={handleSelect}
       onDoubleClick={handleDoubleClick}
-      style={{ padding: 16, background: '#fff' }}
+      style={{ padding: 16, background: "#fff" }}
     />
   );
 };

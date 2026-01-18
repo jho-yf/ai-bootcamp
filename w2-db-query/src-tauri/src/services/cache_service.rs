@@ -86,7 +86,7 @@ pub fn save_connection(conn: &crate::models::database::DatabaseConnection) -> Re
     let db = get_connection()?;
 
     // 简单 Base64 编码密码（实际应该使用 AES-256）
-    use base64::{Engine as _, engine::general_purpose};
+    use base64::{engine::general_purpose, Engine as _};
     let password_encrypted = general_purpose::STANDARD.encode(&conn.password);
 
     db.execute(
@@ -113,7 +113,7 @@ pub fn save_connection(conn: &crate::models::database::DatabaseConnection) -> Re
 
 /// 加载所有数据库连接配置
 pub fn load_connections() -> Result<Vec<crate::models::database::DatabaseConnection>, AppError> {
-    use crate::models::database::{DatabaseConnection, ConnectionStatus};
+    use crate::models::database::{ConnectionStatus, DatabaseConnection};
     use chrono::DateTime;
 
     let db = get_connection()?;
@@ -124,12 +124,23 @@ pub fn load_connections() -> Result<Vec<crate::models::database::DatabaseConnect
     let rows = stmt
         .query_map([], |row| {
             let password_encrypted: String = row.get(6)?;
-            use base64::{Engine as _, engine::general_purpose};
+            use base64::{engine::general_purpose, Engine as _};
             let password_bytes = general_purpose::STANDARD
                 .decode(&password_encrypted)
-                .map_err(|_| rusqlite::Error::InvalidColumnType(6, "password".to_string(), rusqlite::types::Type::Text))?;
-            let password = String::from_utf8(password_bytes)
-                .map_err(|_| rusqlite::Error::InvalidColumnType(6, "password".to_string(), rusqlite::types::Type::Text))?;
+                .map_err(|_| {
+                    rusqlite::Error::InvalidColumnType(
+                        6,
+                        "password".to_string(),
+                        rusqlite::types::Type::Text,
+                    )
+                })?;
+            let password = String::from_utf8(password_bytes).map_err(|_| {
+                rusqlite::Error::InvalidColumnType(
+                    6,
+                    "password".to_string(),
+                    rusqlite::types::Type::Text,
+                )
+            })?;
 
             let status_str: String = row.get(7)?;
             let status = match status_str.as_str() {
@@ -149,10 +160,22 @@ pub fn load_connections() -> Result<Vec<crate::models::database::DatabaseConnect
                 password,
                 status,
                 created_at: DateTime::parse_from_rfc3339(&row.get::<_, String>(8)?)
-                    .map_err(|_| rusqlite::Error::InvalidColumnType(8, "created_at".to_string(), rusqlite::types::Type::Text))?
+                    .map_err(|_| {
+                        rusqlite::Error::InvalidColumnType(
+                            8,
+                            "created_at".to_string(),
+                            rusqlite::types::Type::Text,
+                        )
+                    })?
                     .with_timezone(&chrono::Utc),
                 updated_at: DateTime::parse_from_rfc3339(&row.get::<_, String>(9)?)
-                    .map_err(|_| rusqlite::Error::InvalidColumnType(9, "updated_at".to_string(), rusqlite::types::Type::Text))?
+                    .map_err(|_| {
+                        rusqlite::Error::InvalidColumnType(
+                            9,
+                            "updated_at".to_string(),
+                            rusqlite::types::Type::Text,
+                        )
+                    })?
                     .with_timezone(&chrono::Utc),
             })
         })
@@ -169,8 +192,11 @@ pub fn load_connections() -> Result<Vec<crate::models::database::DatabaseConnect
 /// 删除数据库连接
 pub fn delete_connection(connection_id: &str) -> Result<(), AppError> {
     let db = get_connection()?;
-    db.execute("DELETE FROM connections WHERE id = ?1", params![connection_id])
-        .map_err(|e| AppError::CacheStorage(format!("删除连接失败: {}", e)))?;
+    db.execute(
+        "DELETE FROM connections WHERE id = ?1",
+        params![connection_id],
+    )
+    .map_err(|e| AppError::CacheStorage(format!("删除连接失败: {}", e)))?;
     Ok(())
 }
 
@@ -205,13 +231,57 @@ pub fn load_metadata(connection_id: &str) -> Result<Option<String>, AppError> {
     Ok(result)
 }
 
+/// 保存查询历史记录
+///
+/// # 参数
+/// * `connection_id` - 数据库连接 ID
+/// * `query_type` - 查询类型："sql" 或 "natural_language"
+/// * `sql` - SQL 查询语句（可选，natural_language 类型时为生成的 SQL）
+/// * `prompt` - 自然语言描述（仅 natural_language 类型）
+/// * `exec_time_ms` - 执行时间（毫秒，可选）
+/// * `status` - 查询状态："success" 或 "failed"
+pub fn save_query_history(
+    connection_id: &str,
+    query_type: &str,
+    sql: Option<&str>,
+    prompt: Option<&str>,
+    exec_time_ms: Option<u64>,
+    status: &str,
+) -> Result<(), AppError> {
+    use chrono::Utc;
+    use uuid::Uuid;
+
+    let db = get_connection()?;
+    let id = Uuid::new_v4().to_string();
+    let executed_at = Utc::now().to_rfc3339();
+
+    db.execute(
+        "INSERT INTO query_history
+         (id, connection_id, query_type, sql, prompt, executed_at, exec_time_ms, status)
+         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)",
+        params![
+            id,
+            connection_id,
+            query_type,
+            sql,
+            prompt,
+            executed_at,
+            exec_time_ms.map(|v| v as i64),
+            status
+        ],
+    )
+    .map_err(|e| AppError::CacheStorage(format!("保存查询历史失败: {}", e)))?;
+
+    Ok(())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::models::database::{DatabaseConnection, ConnectionStatus};
+    use crate::models::database::{ConnectionStatus, DatabaseConnection};
     use chrono::Utc;
-    use tempfile::NamedTempFile;
     use std::fs;
+    use tempfile::NamedTempFile;
 
     fn setup_test_db() -> Result<(String, tempfile::TempDir), AppError> {
         // 使用 tempfile 创建临时目录，然后在该目录中创建数据库文件

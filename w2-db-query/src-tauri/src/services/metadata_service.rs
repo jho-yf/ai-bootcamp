@@ -1,8 +1,8 @@
 /// 元数据提取服务：从 PostgreSQL 提取数据库结构信息
-use crate::models::metadata::{DatabaseMetadata, TableInfo, ViewInfo, ColumnInfo, ForeignKeyInfo};
+use crate::models::metadata::{ColumnInfo, DatabaseMetadata, ForeignKeyInfo, TableInfo, ViewInfo};
 use crate::utils::error::AppError;
-use tokio_postgres::Client;
 use chrono::Utc;
+use tokio_postgres::Client;
 
 /// 从 PostgreSQL 提取完整的数据库元数据
 pub async fn extract_metadata(
@@ -120,8 +120,7 @@ async fn extract_columns(
 
     // 获取主键列
     let primary_key_cols = extract_primary_keys(client, schema, table_name).await?;
-    let primary_key_set: std::collections::HashSet<String> =
-        primary_key_cols.into_iter().collect();
+    let primary_key_set: std::collections::HashSet<String> = primary_key_cols.into_iter().collect();
 
     let mut columns = Vec::new();
     for row in rows {

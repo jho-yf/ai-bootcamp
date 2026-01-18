@@ -132,24 +132,24 @@
 
 ### 3.1 AI 服务集成
 
-- [ ] T047 [US3] 实现 OpenAI 服务 src-tauri/src/services/ai_service.rs：调用 OpenAI API，传递元数据上下文
-- [ ] T048 [US3] 实现 Prompt 构建逻辑 ai_service.rs：将元数据格式化为 LLM 上下文
+- [x] T047 [US3] 实现 OpenAI 服务 src-tauri/src/services/ai_service.rs：调用 OpenAI API，传递元数据上下文
+- [x] T048 [US3] 实现 Prompt 构建逻辑 ai_service.rs：将元数据格式化为 LLM 上下文
 
 ### 3.2 AI 查询 Commands
 
-- [ ] T049 [P] [US3] 实现 generate_sql_from_nl command src-tauri/src/commands/ai.rs（仅生成 SQL，不执行）
-- [ ] T050 [P] [US3] 实现 run_nl_query command src-tauri/src/commands/ai.rs（生成并执行 SQL）
+- [x] T049 [P] [US3] 实现 generate_sql_from_nl command src-tauri/src/commands/ai.rs（仅生成 SQL，不执行）
+- [x] T050 [P] [US3] 实现 run_nl_query command src-tauri/src/commands/ai.rs（生成并执行 SQL）
 
 ### 3.3 前端 - 自然语言查询界面
 
-- [ ] T051 [US3] 创建 NLQueryInput 组件 src/components/NLQueryInput.tsx（自然语言输入框和生成按钮）
-- [ ] T052 [US3] 集成 NLQueryInput 到 QueryEditor 页面（标签切换：SQL 编辑器 / 自然语言输入）
-- [ ] T053 [US3] 在 useQuery Hook 中添加自然语言查询支持
+- [x] T051 [US3] 创建 NLQueryInput 组件 src/components/NLQueryInput.tsx（自然语言输入框和生成按钮）
+- [x] T052 [US3] 集成 NLQueryInput 到 QueryEditor 页面（标签切换：SQL 编辑器 / 自然语言输入）
+- [x] T053 [US3] 在 useQuery Hook 中添加自然语言查询支持
 
 ### 3.4 最终优化
 
-- [ ] T054 [P] 添加查询历史记录功能：在 query_history 表中保存查询（区分 sql 和 natural_language 类型）
-- [ ] T055 [P] 实现代码格式化：Rust `cargo fmt`，TypeScript `prettier`
+- [x] T054 [P] 添加查询历史记录功能：在 query_history 表中保存查询（区分 sql 和 natural_language 类型）
+- [x] T055 [P] 实现代码格式化：Rust `cargo fmt`，TypeScript `prettier`
 - [ ] T056 运行 quickstart.md 中的验证场景，确保所有用户故事可用
 
 **Checkpoint US3**: 完整应用就绪，支持自然语言查询（独立测试 P3 功能）
