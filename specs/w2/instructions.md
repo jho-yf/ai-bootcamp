@@ -108,3 +108,5 @@ struct QueryResult {
 }
 
 ```
+
+## 阶段 2 优化

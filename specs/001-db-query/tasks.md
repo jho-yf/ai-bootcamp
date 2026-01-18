@@ -56,71 +56,71 @@
 
 ### 2.1 数据模型（P1+P2 共享）
 
-- [ ] T014 [P] [US1] 实现 DatabaseConnection 模型 src-tauri/src/models/database.rs
-- [ ] T015 [P] [US1] 实现 DatabaseMetadata, TableInfo, ColumnInfo 模型 src-tauri/src/models/metadata.rs
-- [ ] T016 [P] [US2] 实现 QueryResult 模型 src-tauri/src/models/query.rs
+- [x] T014 [P] [US1] 实现 DatabaseConnection 模型 src-tauri/src/models/database.rs
+- [x] T015 [P] [US1] 实现 DatabaseMetadata, TableInfo, ColumnInfo 模型 src-tauri/src/models/metadata.rs
+- [x] T016 [P] [US2] 实现 QueryResult 模型 src-tauri/src/models/query.rs
 
 ### 2.2 数据库连接服务（P1）
 
-- [ ] T017 [US1] 实现 PostgreSQL 连接服务 src-tauri/src/services/postgres_service.rs：连接、断开、测试连接
-- [ ] T018 [US1] 实现 SQLite 缓存服务 src-tauri/src/services/cache_service.rs：保存/加载连接配置（加密密码）
-- [ ] T019 [US1] 实现元数据提取服务 src-tauri/src/services/metadata_service.rs：查询 information_schema 并解析
+- [x] T017 [US1] 实现 PostgreSQL 连接服务 src-tauri/src/services/postgres_service.rs：连接、断开、测试连接
+- [x] T018 [US1] 实现 SQLite 缓存服务 src-tauri/src/services/cache_service.rs：保存/加载连接配置（加密密码）
+- [x] T019 [US1] 实现元数据提取服务 src-tauri/src/services/metadata_service.rs：查询 information_schema 并解析
 
 ### 2.3 数据库连接管理 Commands（P1）
 
-- [ ] T020 [P] [US1] 实现 list_databases command src-tauri/src/commands/database.rs
-- [ ] T021 [P] [US1] 实现 add_database command src-tauri/src/commands/database.rs（含元数据自动提取）
-- [ ] T022 [P] [US1] 实现 update_database command src-tauri/src/commands/database.rs
-- [ ] T023 [P] [US1] 实现 delete_database command src-tauri/src/commands/database.rs
-- [ ] T024 [P] [US1] 实现 test_connection command src-tauri/src/commands/database.rs
+- [x] T020 [P] [US1] 实现 list_databases command src-tauri/src/commands/database.rs
+- [x] T021 [P] [US1] 实现 add_database command src-tauri/src/commands/database.rs（含元数据自动提取）
+- [x] T022 [P] [US1] 实现 update_database command src-tauri/src/commands/database.rs
+- [x] T023 [P] [US1] 实现 delete_database command src-tauri/src/commands/database.rs
+- [x] T024 [P] [US1] 实现 test_connection command src-tauri/src/commands/database.rs
 
 ### 2.4 元数据管理 Commands（P1）
 
-- [ ] T025 [P] [US1] 实现 get_database_metadata command src-tauri/src/commands/metadata.rs（优先返回缓存）
-- [ ] T026 [P] [US1] 实现 refresh_metadata command src-tauri/src/commands/metadata.rs（强制重新提取）
+- [x] T025 [P] [US1] 实现 get_database_metadata command src-tauri/src/commands/metadata.rs（优先返回缓存）
+- [x] T026 [P] [US1] 实现 refresh_metadata command src-tauri/src/commands/metadata.rs（强制重新提取）
 
 ### 2.5 前端 - 数据库连接管理界面（P1）
 
-- [ ] T027 [P] [US1] 创建 DatabaseList 页面 src/pages/DatabaseList.tsx（显示所有连接）
-- [ ] T028 [P] [US1] 创建 DatabaseCard 组件 src/components/DatabaseCard.tsx（单个连接卡片）
-- [ ] T029 [US1] 创建添加连接表单对话框 src/components/AddDatabaseDialog.tsx（使用 Ant Design Form）
-- [ ] T030 [US1] 创建 useDatabases Hook src/hooks/useDatabases.ts（封装数据库 CRUD 操作）
+- [x] T027 [P] [US1] 创建 DatabaseList 页面 src/pages/DatabaseList.tsx（显示所有连接）
+- [x] T028 [P] [US1] 创建 DatabaseCard 组件 src/components/DatabaseCard.tsx（单个连接卡片）
+- [x] T029 [US1] 创建添加连接表单对话框 src/components/AddDatabaseDialog.tsx（使用 Ant Design Form）
+- [x] T030 [US1] 创建 useDatabases Hook src/hooks/useDatabases.ts（封装数据库 CRUD 操作）
 
 ### 2.6 前端 - 元数据浏览界面（P1）
 
-- [ ] T031 [P] [US1] 创建 DatabaseExplorer 页面 src/pages/DatabaseExplorer.tsx（主布局：侧边栏+内容区）
-- [ ] T032 [US1] 创建 MetadataTree 组件 src/components/MetadataTree.tsx（使用 Ant Design Tree 显示表和视图）
-- [ ] T033 [US1] 创建 useMetadata Hook src/hooks/useMetadata.ts（加载和刷新元数据）
+- [x] T031 [P] [US1] 创建 DatabaseExplorer 页面 src/pages/DatabaseExplorer.tsx（主布局：侧边栏+内容区）
+- [x] T032 [US1] 创建 MetadataTree 组件 src/components/MetadataTree.tsx（使用 Ant Design Tree 显示表和视图）
+- [x] T033 [US1] 创建 useMetadata Hook src/hooks/useMetadata.ts（加载和刷新元数据）
 
 **Checkpoint US1**: 此时可以添加数据库连接并浏览数据库结构（独立测试 P1 功能）
 
 ### 2.7 SQL 查询解析服务（P2）
 
-- [ ] T034 [US2] 实现 SQL 解析器 src-tauri/src/services/query_parser.rs：使用 sqlparser-rs 解析并注入 LIMIT 100
-- [ ] T035 [US2] 在 query_parser.rs 中添加 DDL 检测和拒绝逻辑
+- [x] T034 [US2] 实现 SQL 解析器 src-tauri/src/services/query_parser.rs：使用 sqlparser-rs 解析并注入 LIMIT 100
+- [x] T035 [US2] 在 query_parser.rs 中添加 DDL 检测和拒绝逻辑
 
 ### 2.8 SQL 查询执行 Commands（P2）
 
-- [ ] T036 [P] [US2] 实现 run_sql_query command src-tauri/src/commands/query.rs（解析、执行、返回结果）
-- [ ] T037 [P] [US2] 实现 cancel_query command src-tauri/src/commands/query.rs（取消正在执行的查询）
+- [x] T036 [P] [US2] 实现 run_sql_query command src-tauri/src/commands/query.rs（解析、执行、返回结果）
+- [x] T037 [P] [US2] 实现 cancel_query command src-tauri/src/commands/query.rs（取消正在执行的查询）
 
 ### 2.9 前端 - SQL 编辑和查询界面（P2）
 
-- [ ] T038 [US2] 创建 QueryEditor 页面 src/pages/QueryEditor.tsx（主布局：编辑器+结果表格）
-- [ ] T039 [US2] 创建 SqlEditor 组件 src/components/SqlEditor.tsx（集成 Monaco Editor，配置 SQL 语法高亮）
-- [ ] T040 [US2] 创建 QueryResultTable 组件 src/components/QueryResultTable.tsx（使用 Ant Design Table 显示结果）
-- [ ] T041 [US2] 创建 LoadingIndicator 组件 src/components/LoadingIndicator.tsx（查询执行时显示）
-- [ ] T042 [US2] 创建 useQuery Hook src/hooks/useQuery.ts（执行查询、管理加载状态）
+- [x] T038 [US2] 创建 QueryEditor 页面 src/pages/QueryEditor.tsx（主布局：编辑器+结果表格）
+- [x] T039 [US2] 创建 SqlEditor 组件 src/components/SqlEditor.tsx（集成 Monaco Editor，配置 SQL 语法高亮）
+- [x] T040 [US2] 创建 QueryResultTable 组件 src/components/QueryResultTable.tsx（使用 Ant Design Table 显示结果）
+- [x] T041 [US2] 创建 LoadingIndicator 组件 src/components/LoadingIndicator.tsx（查询执行时显示）
+- [x] T042 [US2] 创建 useQuery Hook src/hooks/useQuery.ts（执行查询、管理加载状态）
 
 ### 2.10 前端 - 应用主框架和路由
 
-- [ ] T043 更新 App.tsx src/App.tsx 配置路由：DatabaseList, DatabaseExplorer, QueryEditor
-- [ ] T044 创建全局布局组件 src/components/Layout.tsx（顶部导航栏、侧边菜单）
+- [x] T043 更新 App.tsx src/App.tsx 配置路由：DatabaseList, DatabaseExplorer, QueryEditor
+- [x] T044 创建全局布局组件 src/components/Layout.tsx（顶部导航栏、侧边菜单）
 
 ### 2.11 集成和错误处理
 
-- [ ] T045 在 src-tauri/src/main.rs 中注册所有 Tauri commands
-- [ ] T046 实现前端全局错误处理 src/services/api.ts（捕获 invoke 错误并显示 Ant Design message）
+- [x] T045 在 src-tauri/src/lib.rs 中注册所有 Tauri commands
+- [x] T046 实现前端全局错误处理 src/services/api.ts（捕获 invoke 错误并显示 Ant Design message）
 
 **Checkpoint US2**: 此时可以执行 SQL 查询并查看结果表格（独立测试 P1+P2 完整功能）
 

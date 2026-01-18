@@ -1,7 +1,7 @@
-use crate::utils::config::get_db_path;
 /// SQLite 缓存服务：管理数据库连接配置和元数据缓存
+use crate::utils::config::get_db_path;
 use crate::utils::error::AppError;
-use rusqlite::{params, Connection};
+use rusqlite::{params, Connection, OptionalExtension};
 
 /// 初始化 SQLite 数据库，创建必要的表
 pub fn init_database() -> Result<(), AppError> {
@@ -79,4 +79,271 @@ pub fn get_connection() -> Result<Connection, AppError> {
     let db_path = get_db_path();
     Connection::open(&db_path)
         .map_err(|e| AppError::CacheStorage(format!("无法打开数据库 {}: {}", db_path, e)))
+}
+
+/// 保存数据库连接配置（密码简单 Base64 编码，实际应该使用 AES-256）
+pub fn save_connection(conn: &crate::models::database::DatabaseConnection) -> Result<(), AppError> {
+    let db = get_connection()?;
+
+    // 简单 Base64 编码密码（实际应该使用 AES-256）
+    use base64::{Engine as _, engine::general_purpose};
+    let password_encrypted = general_purpose::STANDARD.encode(&conn.password);
+
+    db.execute(
+        "INSERT OR REPLACE INTO connections
+         (id, name, host, port, database_name, user, password_encrypted, status, created_at, updated_at)
+         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10)",
+        params![
+            conn.id,
+            conn.name,
+            conn.host,
+            conn.port,
+            conn.database_name,
+            conn.user,
+            password_encrypted,
+            format!("{:?}", conn.status),
+            conn.created_at.to_rfc3339(),
+            conn.updated_at.to_rfc3339()
+        ],
+    )
+    .map_err(|e| AppError::CacheStorage(format!("保存连接失败: {}", e)))?;
+
+    Ok(())
+}
+
+/// 加载所有数据库连接配置
+pub fn load_connections() -> Result<Vec<crate::models::database::DatabaseConnection>, AppError> {
+    use crate::models::database::{DatabaseConnection, ConnectionStatus};
+    use chrono::DateTime;
+
+    let db = get_connection()?;
+    let mut stmt = db
+        .prepare("SELECT id, name, host, port, database_name, user, password_encrypted, status, created_at, updated_at FROM connections")
+        .map_err(|e| AppError::CacheStorage(format!("准备查询失败: {}", e)))?;
+
+    let rows = stmt
+        .query_map([], |row| {
+            let password_encrypted: String = row.get(6)?;
+            use base64::{Engine as _, engine::general_purpose};
+            let password_bytes = general_purpose::STANDARD
+                .decode(&password_encrypted)
+                .map_err(|_| rusqlite::Error::InvalidColumnType(6, "password".to_string(), rusqlite::types::Type::Text))?;
+            let password = String::from_utf8(password_bytes)
+                .map_err(|_| rusqlite::Error::InvalidColumnType(6, "password".to_string(), rusqlite::types::Type::Text))?;
+
+            let status_str: String = row.get(7)?;
+            let status = match status_str.as_str() {
+                "Connected" => ConnectionStatus::Connected,
+                "Connecting" => ConnectionStatus::Connecting,
+                "Failed" => ConnectionStatus::Failed,
+                _ => ConnectionStatus::Disconnected,
+            };
+
+            Ok(DatabaseConnection {
+                id: row.get(0)?,
+                name: row.get(1)?,
+                host: row.get(2)?,
+                port: row.get(3)?,
+                database_name: row.get(4)?,
+                user: row.get(5)?,
+                password,
+                status,
+                created_at: DateTime::parse_from_rfc3339(&row.get::<_, String>(8)?)
+                    .map_err(|_| rusqlite::Error::InvalidColumnType(8, "created_at".to_string(), rusqlite::types::Type::Text))?
+                    .with_timezone(&chrono::Utc),
+                updated_at: DateTime::parse_from_rfc3339(&row.get::<_, String>(9)?)
+                    .map_err(|_| rusqlite::Error::InvalidColumnType(9, "updated_at".to_string(), rusqlite::types::Type::Text))?
+                    .with_timezone(&chrono::Utc),
+            })
+        })
+        .map_err(|e| AppError::CacheStorage(format!("查询连接失败: {}", e)))?;
+
+    let mut connections = Vec::new();
+    for row in rows {
+        connections.push(row?);
+    }
+
+    Ok(connections)
+}
+
+/// 删除数据库连接
+pub fn delete_connection(connection_id: &str) -> Result<(), AppError> {
+    let db = get_connection()?;
+    db.execute("DELETE FROM connections WHERE id = ?1", params![connection_id])
+        .map_err(|e| AppError::CacheStorage(format!("删除连接失败: {}", e)))?;
+    Ok(())
+}
+
+/// 保存元数据到缓存
+pub fn save_metadata(connection_id: &str, metadata_json: &str) -> Result<(), AppError> {
+    use chrono::Utc;
+
+    let db = get_connection()?;
+    let extracted_at = Utc::now().to_rfc3339();
+
+    db.execute(
+        "INSERT OR REPLACE INTO metadata (connection_id, metadata_json, extracted_at) VALUES (?1, ?2, ?3)",
+        params![connection_id, metadata_json, extracted_at],
+    )
+    .map_err(|e| AppError::CacheStorage(format!("保存元数据失败: {}", e)))?;
+
+    Ok(())
+}
+
+/// 加载元数据缓存
+pub fn load_metadata(connection_id: &str) -> Result<Option<String>, AppError> {
+    let db = get_connection()?;
+    let mut stmt = db
+        .prepare("SELECT metadata_json FROM metadata WHERE connection_id = ?1")
+        .map_err(|e| AppError::CacheStorage(format!("准备查询失败: {}", e)))?;
+
+    let result = stmt
+        .query_row(params![connection_id], |row| Ok(row.get::<_, String>(0)?))
+        .optional()
+        .map_err(|e| AppError::CacheStorage(format!("查询元数据失败: {}", e)))?;
+
+    Ok(result)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::models::database::{DatabaseConnection, ConnectionStatus};
+    use chrono::Utc;
+    use tempfile::NamedTempFile;
+    use std::fs;
+
+    fn setup_test_db() -> Result<(String, tempfile::TempDir), AppError> {
+        // 使用 tempfile 创建临时目录，然后在该目录中创建数据库文件
+        // 使用 UUID 确保唯一性
+        use uuid::Uuid;
+        let db_name = format!("test_{}.db", Uuid::new_v4());
+
+        let temp_dir = tempfile::tempdir().unwrap();
+        let db_path = temp_dir.path().join(db_name).to_str().unwrap().to_string();
+
+        // 确保文件不存在
+        let _ = fs::remove_file(&db_path);
+
+        // 设置环境变量指向临时数据库
+        std::env::set_var("DB_QUERY_DB_PATH", &db_path);
+
+        // 初始化数据库
+        init_database()?;
+
+        // 返回路径和 temp_dir（调用者负责保持 temp_dir 存在）
+        Ok((db_path, temp_dir))
+    }
+
+    fn cleanup_test_db(db_path: &str, _temp_dir: tempfile::TempDir) {
+        // temp_dir 会在 drop 时自动清理
+        let _ = fs::remove_file(db_path);
+        let _ = std::env::remove_var("DB_QUERY_DB_PATH");
+    }
+
+    #[test]
+    fn test_init_database() {
+        let (db_path, temp_dir) = setup_test_db().unwrap();
+        // 如果初始化成功，应该能获取连接
+        assert!(get_connection().is_ok());
+        cleanup_test_db(&db_path, temp_dir);
+    }
+
+    #[test]
+    fn test_save_and_load_connection() {
+        let (db_path, temp_dir) = setup_test_db().unwrap();
+
+        // 确保数据库是空的
+        assert_eq!(load_connections().unwrap().len(), 0);
+
+        let connection = DatabaseConnection {
+            id: "test-id".to_string(),
+            name: "Test DB".to_string(),
+            host: "localhost".to_string(),
+            port: 5432,
+            database_name: "testdb".to_string(),
+            user: "testuser".to_string(),
+            password: "testpass".to_string(),
+            status: ConnectionStatus::Connected,
+            created_at: Utc::now(),
+            updated_at: Utc::now(),
+        };
+
+        // 保存连接
+        assert!(save_connection(&connection).is_ok());
+
+        // 加载连接
+        let connections = load_connections().unwrap();
+        assert_eq!(connections.len(), 1);
+        assert_eq!(connections[0].id, "test-id");
+        assert_eq!(connections[0].name, "Test DB");
+        assert_eq!(connections[0].host, "localhost");
+        assert_eq!(connections[0].password, "testpass");
+
+        cleanup_test_db(&db_path, temp_dir);
+    }
+
+    #[test]
+    fn test_delete_connection() {
+        let (db_path, temp_dir) = setup_test_db().unwrap();
+
+        let connection = DatabaseConnection {
+            id: "test-id".to_string(),
+            name: "Test DB".to_string(),
+            host: "localhost".to_string(),
+            port: 5432,
+            database_name: "testdb".to_string(),
+            user: "testuser".to_string(),
+            password: "testpass".to_string(),
+            status: ConnectionStatus::Connected,
+            created_at: Utc::now(),
+            updated_at: Utc::now(),
+        };
+
+        save_connection(&connection).unwrap();
+        assert_eq!(load_connections().unwrap().len(), 1);
+
+        // 删除连接
+        assert!(delete_connection("test-id").is_ok());
+        assert_eq!(load_connections().unwrap().len(), 0);
+
+        cleanup_test_db(&db_path, temp_dir);
+    }
+
+    #[test]
+    fn test_save_and_load_metadata() {
+        let (db_path, temp_dir) = setup_test_db().unwrap();
+
+        // 先创建一个连接（因为外键约束）
+        let connection = DatabaseConnection {
+            id: "test-conn-id".to_string(),
+            name: "Test DB".to_string(),
+            host: "localhost".to_string(),
+            port: 5432,
+            database_name: "testdb".to_string(),
+            user: "testuser".to_string(),
+            password: "testpass".to_string(),
+            status: ConnectionStatus::Connected,
+            created_at: Utc::now(),
+            updated_at: Utc::now(),
+        };
+        save_connection(&connection).unwrap();
+
+        let connection_id = "test-conn-id";
+        let metadata_json = r#"{"connectionId":"test-conn-id","tables":[],"views":[]}"#;
+
+        // 保存元数据
+        assert!(save_metadata(connection_id, metadata_json).is_ok());
+
+        // 加载元数据
+        let loaded = load_metadata(connection_id).unwrap();
+        assert!(loaded.is_some());
+        assert_eq!(loaded.unwrap(), metadata_json);
+
+        // 加载不存在的元数据
+        let not_found = load_metadata("non-existent").unwrap();
+        assert!(not_found.is_none());
+
+        cleanup_test_db(&db_path, temp_dir);
+    }
 }
