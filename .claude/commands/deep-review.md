@@ -297,7 +297,7 @@ When many parameters are needed, evaluate Builder pattern usage:
    - Avoid unnecessary allocations and clones
    - Use `Cow<[T]>` for conditional ownership
    - Prefer `&str` over `String` for function parameters
-   - Use `vec![]` with capacity pre-allocation
+   - Use vec macro with capacity pre-allocation
    - Check for: `to_string()`, `clone()` in hot paths
 
 3. **Memory Safety**:
@@ -311,8 +311,8 @@ When many parameters are needed, evaluate Builder pattern usage:
    - Property-based tests with `proptest` for complex logic
 
 5. **Documentation**:
-   - Public APIs documented with `///` or `//!`
-   - Examples in doc comments (`/// ````)
+   - Public APIs documented with triple-slash comments or module-level docs
+   - Examples in doc comments (using code blocks with triple backticks)
    - Panic conditions documented
 
 #### B. TypeScript Best Practices
