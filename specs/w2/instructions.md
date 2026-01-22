@@ -112,3 +112,7 @@ struct QueryResult {
 ## speckit.analyze
 
 /speckit.analyze 仔细 review @w2-db-query 的代码，删除无用、冗余的代码，添加更多的 unit test，以及寻找 opportunity
+
+## 添加 MySQL 数据库支持
+
+参考 `./w2-db-query` 中的 PostgreSQL 的实现，进行 MySQL 数据库的 metadata 提取支持和查询支持，同时自然语言生成 SQL 也要支持 MySQL 语法的支持。相关文档输出到 `./specs/002-mysql-support` 中。
