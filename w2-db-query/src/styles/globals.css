@@ -1,0 +1,112 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* 全局样式 */
+body {
+  margin: 0;
+  font-family:
+    -apple-system, BlinkMacSystemFont, "Segoe UI", "Roboto", "Oxygen", "Ubuntu",
+    "Cantarell", "Fira Sans", "Droid Sans", "Helvetica Neue", sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+code {
+  font-family:
+    source-code-pro, Menlo, Monaco, Consolas, "Courier New", monospace;
+}
+
+/* 移除 Select 组件内部的圆角框 */
+.ant-select-selector {
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  background: transparent !important;
+}
+
+.ant-select-focused .ant-select-selector {
+  border-radius: 0 !important;
+  box-shadow: none !important;
+}
+
+.ant-select:not(.ant-select-disabled):hover .ant-select-selector {
+  border-radius: 0 !important;
+}
+
+/* 移除 Select 内部输入框的圆角 */
+.ant-select-selection-search-input {
+  border-radius: 0 !important;
+}
+
+.ant-select-selection-item {
+  border-radius: 0 !important;
+}
+
+/* 修复 Tree 组件滚动时的黑色背景问题 */
+.ant-tree {
+  background: #fff !important;
+}
+
+.ant-tree-list {
+  background: #fff !important;
+}
+
+.ant-tree-list-holder {
+  background: #fff !important;
+}
+
+.ant-tree-list-holder-inner {
+  background: #fff !important;
+}
+
+/* 确保 Sider 背景色正确 */
+.ant-layout-sider {
+  background: #fff !important;
+}
+
+.ant-layout-sider-children {
+  background: #fff !important;
+}
+
+/* 修复 Tabs 内容区域的显示问题 */
+.ant-tabs-content-holder {
+  flex: 1 !important;
+  min-height: 0 !important;
+  overflow: hidden !important;
+}
+
+.ant-tabs-content {
+  height: 100% !important;
+  display: flex !important;
+  flex-direction: column !important;
+}
+
+.ant-tabs-tabpane {
+  height: 100% !important;
+  display: flex !important;
+  flex-direction: column !important;
+  overflow: hidden !important;
+}
+
+/* 菜单项悬停时显示操作按钮 */
+.ant-menu-item:hover .db-actions {
+  opacity: 1 !important;
+}
+
+.ant-menu-item-selected .db-actions {
+  opacity: 1 !important;
+}
+
+/* Tree 节点文本溢出省略 */
+.ant-tree-node-content-wrapper {
+  overflow: hidden !important;
+  min-width: 0 !important;
+}
+
+.ant-tree-title {
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  white-space: nowrap !important;
+  min-width: 0 !important;
+  flex: 1 !important;
+}

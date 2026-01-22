@@ -62,18 +62,14 @@ export function Sidebar({
       <div className="flex-1 overflow-y-auto p-6">
         <div className="space-y-2">
           {tags.length === 0 ? (
-            <p className="text-sm text-muted-foreground text-center py-12 font-normal">
-              暂无标签
-            </p>
+            <p className="text-sm text-muted-foreground text-center py-12 font-normal">暂无标签</p>
           ) : (
             tags.map((tag) => (
               <div
                 key={tag.id}
                 className={cn(
                   "p-4 cursor-pointer transition-all duration-300 ease",
-                  selectedTagId === tag.id
-                    ? "bg-accent"
-                    : "hover:bg-accent"
+                  selectedTagId === tag.id ? "bg-accent" : "hover:bg-accent"
                 )}
                 onClick={() => onTagClick(tag.id)}
               >
