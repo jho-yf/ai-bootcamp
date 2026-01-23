@@ -2,8 +2,7 @@
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-    use crate::models::metadata::{ColumnInfo, TableInfo};
+    use crate::models::metadata::DatabaseMetadata;
 
     #[test]
     fn test_format_metadata_empty() {

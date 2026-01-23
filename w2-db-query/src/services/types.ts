@@ -3,6 +3,9 @@
  * 映射后端 Rust 数据模型，确保前后端类型一致
  */
 
+// 数据库类型
+export type DatabaseType = "postgresql" | "mysql";
+
 // 数据库连接状态
 export type ConnectionStatus =
   | "disconnected"
@@ -14,6 +17,7 @@ export type ConnectionStatus =
 export interface DatabaseConnection {
   id: string;
   name: string;
+  databaseType: DatabaseType;
   host: string;
   port: number;
   databaseName: string;
@@ -87,6 +91,7 @@ export interface NLQueryResponse {
 // 添加数据库请求
 export interface AddDatabaseRequest {
   name: string;
+  databaseType: DatabaseType;
   host: string;
   port: number;
   databaseName: string;

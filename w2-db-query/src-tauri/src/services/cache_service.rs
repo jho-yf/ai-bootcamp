@@ -14,6 +14,7 @@ pub fn init_database() -> Result<(), AppError> {
         "CREATE TABLE IF NOT EXISTS connections (
             id TEXT PRIMARY KEY,
             name TEXT NOT NULL,
+            database_type TEXT NOT NULL DEFAULT 'postgresql',
             host TEXT NOT NULL,
             port INTEGER NOT NULL,
             database_name TEXT NOT NULL,
@@ -26,6 +27,12 @@ pub fn init_database() -> Result<(), AppError> {
         [],
     )
     .map_err(|e| AppError::CacheStorage(format!("创建 connections 表失败: {}", e)))?;
+
+    // 添加数据库类型列（用于旧版本升级）
+    let _ = conn.execute(
+        "ALTER TABLE connections ADD COLUMN database_type TEXT DEFAULT 'postgresql'",
+        [],
+    );
 
     // 创建元数据表（JSON 格式）
     conn.execute(
@@ -89,13 +96,17 @@ pub fn save_connection(conn: &crate::models::database::DatabaseConnection) -> Re
     use base64::{engine::general_purpose, Engine as _};
     let password_encrypted = general_purpose::STANDARD.encode(&conn.password);
 
+    // 序列化数据库类型
+    let database_type = format!("{:?}", conn.database_type).to_lowercase();
+
     db.execute(
         "INSERT OR REPLACE INTO connections
-         (id, name, host, port, database_name, user, password_encrypted, status, created_at, updated_at)
-         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10)",
+         (id, name, database_type, host, port, database_name, user, password_encrypted, status, created_at, updated_at)
+         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11)",
         params![
             conn.id,
             conn.name,
+            database_type,
             conn.host,
             conn.port,
             conn.database_name,
@@ -113,36 +124,42 @@ pub fn save_connection(conn: &crate::models::database::DatabaseConnection) -> Re
 
 /// 加载所有数据库连接配置
 pub fn load_connections() -> Result<Vec<crate::models::database::DatabaseConnection>, AppError> {
-    use crate::models::database::{ConnectionStatus, DatabaseConnection};
+    use crate::models::database::{ConnectionStatus, DatabaseConnection, DatabaseType};
     use chrono::DateTime;
 
     let db = get_connection()?;
     let mut stmt = db
-        .prepare("SELECT id, name, host, port, database_name, user, password_encrypted, status, created_at, updated_at FROM connections")
+        .prepare("SELECT id, name, database_type, host, port, database_name, user, password_encrypted, status, created_at, updated_at FROM connections")
         .map_err(|e| AppError::CacheStorage(format!("准备查询失败: {}", e)))?;
 
     let rows = stmt
         .query_map([], |row| {
-            let password_encrypted: String = row.get(6)?;
+            let password_encrypted: String = row.get(7)?;
             use base64::{engine::general_purpose, Engine as _};
             let password_bytes = general_purpose::STANDARD
                 .decode(&password_encrypted)
                 .map_err(|_| {
                     rusqlite::Error::InvalidColumnType(
-                        6,
+                        7,
                         "password".to_string(),
                         rusqlite::types::Type::Text,
                     )
                 })?;
             let password = String::from_utf8(password_bytes).map_err(|_| {
                 rusqlite::Error::InvalidColumnType(
-                    6,
+                    7,
                     "password".to_string(),
                     rusqlite::types::Type::Text,
                 )
             })?;
 
-            let status_str: String = row.get(7)?;
+            let database_type_str: String = row.get(2)?;
+            let database_type = match database_type_str.as_str() {
+                "mysql" => DatabaseType::MySQL,
+                _ => DatabaseType::PostgreSQL,
+            };
+
+            let status_str: String = row.get(8)?;
             let status = match status_str.as_str() {
                 "Connected" => ConnectionStatus::Connected,
                 "Connecting" => ConnectionStatus::Connecting,
@@ -153,25 +170,26 @@ pub fn load_connections() -> Result<Vec<crate::models::database::DatabaseConnect
             Ok(DatabaseConnection {
                 id: row.get(0)?,
                 name: row.get(1)?,
-                host: row.get(2)?,
-                port: row.get(3)?,
-                database_name: row.get(4)?,
-                user: row.get(5)?,
+                database_type,
+                host: row.get(3)?,
+                port: row.get(4)?,
+                database_name: row.get(5)?,
+                user: row.get(6)?,
                 password,
                 status,
-                created_at: DateTime::parse_from_rfc3339(&row.get::<_, String>(8)?)
+                created_at: DateTime::parse_from_rfc3339(&row.get::<_, String>(9)?)
                     .map_err(|_| {
                         rusqlite::Error::InvalidColumnType(
-                            8,
+                            9,
                             "created_at".to_string(),
                             rusqlite::types::Type::Text,
                         )
                     })?
                     .with_timezone(&chrono::Utc),
-                updated_at: DateTime::parse_from_rfc3339(&row.get::<_, String>(9)?)
+                updated_at: DateTime::parse_from_rfc3339(&row.get::<_, String>(10)?)
                     .map_err(|_| {
                         rusqlite::Error::InvalidColumnType(
-                            9,
+                            10,
                             "updated_at".to_string(),
                             rusqlite::types::Type::Text,
                         )
@@ -329,6 +347,7 @@ mod tests {
         let connection = DatabaseConnection {
             id: "test-id".to_string(),
             name: "Test DB".to_string(),
+            database_type: crate::models::database::DatabaseType::PostgreSQL,
             host: "localhost".to_string(),
             port: 5432,
             database_name: "testdb".to_string(),
@@ -347,6 +366,7 @@ mod tests {
         assert_eq!(connections.len(), 1);
         assert_eq!(connections[0].id, "test-id");
         assert_eq!(connections[0].name, "Test DB");
+        assert!(matches!(connections[0].database_type, crate::models::database::DatabaseType::PostgreSQL));
         assert_eq!(connections[0].host, "localhost");
         assert_eq!(connections[0].password, "testpass");
 
@@ -360,6 +380,7 @@ mod tests {
         let connection = DatabaseConnection {
             id: "test-id".to_string(),
             name: "Test DB".to_string(),
+            database_type: crate::models::database::DatabaseType::PostgreSQL,
             host: "localhost".to_string(),
             port: 5432,
             database_name: "testdb".to_string(),
@@ -388,6 +409,7 @@ mod tests {
         let connection = DatabaseConnection {
             id: "test-conn-id".to_string(),
             name: "Test DB".to_string(),
+            database_type: crate::models::database::DatabaseType::PostgreSQL,
             host: "localhost".to_string(),
             port: 5432,
             database_name: "testdb".to_string(),

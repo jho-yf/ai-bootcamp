@@ -1,10 +1,10 @@
 /// SQL 查询执行 Commands
+use crate::models::database::DatabaseType;
 use crate::models::query::{QueryResult, RunQueryRequest};
-use crate::services::{cache_service, postgres_service, query_parser};
+use crate::services::{cache_service, mysql_service, postgres_service, query_parser};
 use chrono::{DateTime, NaiveDate, NaiveDateTime, NaiveTime, Utc};
 use serde_json::Value;
 use std::collections::HashMap;
-use uuid::Uuid;
 
 /// 执行 SQL 查询
 #[tauri::command]
@@ -26,24 +26,87 @@ pub async fn run_sql_query(request: RunQueryRequest) -> Result<QueryResult, Stri
         .find(|c| c.id == request.database_id)
         .ok_or_else(|| "数据库连接不存在".to_string())?;
 
-    // 连接到 PostgreSQL
-    let client = postgres_service::connect(
-        &connection.host,
-        connection.port,
-        &connection.database_name,
-        &connection.user,
-        &connection.password,
-    )
-    .await
-    .map_err(|e| format!("连接失败: {}", e))?;
+    // 根据数据库类型执行查询
+    let result = match connection.database_type {
+        DatabaseType::PostgreSQL => {
+            // PostgreSQL 查询执行
+            let client = postgres_service::connect(
+                &connection.host,
+                connection.port,
+                &connection.database_name,
+                &connection.user,
+                &connection.password,
+            )
+            .await
+            .map_err(|e| format!("连接失败: {}", e))?;
 
-    // 执行查询
-    let (columns, rows, exec_time_ms) = postgres_service::execute_query(&client, &parsed_sql)
-        .await
-        .map_err(|e| e.to_string())?;
+            let (columns, rows, exec_time_ms) =
+                postgres_service::execute_query(&client, &parsed_sql)
+                    .await
+                    .map_err(|e| e.to_string())?;
 
-    // 转换行数据为 HashMap
-    // 使用 tokio-postgres 的类型系统来安全地转换值
+            // 转换 PostgreSQL 行数据为 JSON
+            let result_rows = convert_postgres_rows(&columns, &rows);
+            let total = result_rows.len();
+            let truncated = total >= 100;
+
+            QueryResult {
+                columns,
+                rows: result_rows,
+                total,
+                exec_time_ms,
+                sql: parsed_sql.clone(),
+                truncated,
+            }
+        }
+        DatabaseType::MySQL => {
+            // MySQL 查询执行
+            let pool = mysql_service::connect(
+                &connection.host,
+                connection.port,
+                &connection.database_name,
+                &connection.user,
+                &connection.password,
+            )
+            .await
+            .map_err(|e| format!("连接失败: {}", e))?;
+
+            let (columns, rows, exec_time_ms) =
+                mysql_service::execute_query(&pool, &parsed_sql)
+                    .await
+                    .map_err(|e| e.to_string())?;
+
+            // 转换 MySQL 行数据为 JSON
+            let result_rows = convert_mysql_rows(&columns, &rows);
+            let total = result_rows.len();
+            let truncated = total >= 100;
+
+            QueryResult {
+                columns,
+                rows: result_rows,
+                total,
+                exec_time_ms,
+                sql: parsed_sql.clone(),
+                truncated,
+            }
+        }
+    };
+
+    // 保存查询历史（SQL 查询类型）
+    let _ = cache_service::save_query_history(
+        &request.database_id,
+        "sql",
+        Some(&parsed_sql),
+        None,
+        Some(result.exec_time_ms),
+        "success",
+    );
+
+    Ok(result)
+}
+
+/// 转换 PostgreSQL 行数据为 JSON 格式
+fn convert_postgres_rows(columns: &[String], rows: &[tokio_postgres::Row]) -> Vec<HashMap<String, Value>> {
     let mut result_rows = Vec::new();
     for row in rows {
         let mut row_map = HashMap::new();
@@ -54,34 +117,22 @@ pub async fn run_sql_query(request: RunQueryRequest) -> Result<QueryResult, Stri
                 continue;
             }
 
-            // 根据 PostgreSQL 类型名称转换
+            // 根据 PostgreSQL 类型系统转换值
             let col_type_info = col_type.unwrap();
             let type_name = col_type_info.type_().name();
             let type_oid = col_type_info.type_().oid();
 
-            // 检查是否为 UUID 类型（通过类型名称或 OID）
-            // PostgreSQL UUID 类型的 OID 是 2950
             let is_uuid = type_name == "uuid" || type_oid == 2950;
 
             let value: Value = if is_uuid {
-                // UUID 类型：使用 uuid::Uuid 类型读取
-                // 先尝试读取为 Option<Uuid> 以正确处理 NULL 值
-                match row.try_get::<_, Option<Uuid>>(i) {
+                match row.try_get::<_, Option<uuid::Uuid>>(i) {
                     Ok(Some(uuid_val)) => Value::String(uuid_val.to_string()),
                     Ok(None) => Value::Null,
-                    Err(_) => {
-                        // 如果 Option<Uuid> 失败，尝试直接读取 Uuid（非 NULL 情况）
-                        match row.try_get::<_, Uuid>(i) {
-                            Ok(uuid_val) => Value::String(uuid_val.to_string()),
-                            Err(_) => {
-                                // 如果都失败，尝试作为字符串读取（降级方案）
-                                row.try_get::<_, Option<String>>(i)
-                                    .ok()
-                                    .and_then(|opt| opt.map(Value::String))
-                                    .unwrap_or(Value::Null)
-                            }
-                        }
-                    }
+                    Err(_) => row
+                        .try_get::<_, Option<String>>(i)
+                        .ok()
+                        .and_then(|opt| opt.map(Value::String))
+                        .unwrap_or(Value::Null),
                 }
             } else {
                 match type_name {
@@ -98,108 +149,98 @@ pub async fn run_sql_query(request: RunQueryRequest) -> Result<QueryResult, Stri
                         .ok()
                         .and_then(|v| serde_json::Number::from_f64(v).map(Value::Number))
                         .unwrap_or(Value::Null),
-                    "bool" => row
-                        .try_get::<_, bool>(i)
-                        .map(Value::Bool)
-                        .unwrap_or(Value::Null),
-                    "timestamp" => {
-                        // timestamp (without timezone)
-                        match row.try_get::<_, Option<NaiveDateTime>>(i) {
-                            Ok(Some(dt)) => {
-                                Value::String(dt.format("%Y-%m-%d %H:%M:%S%.f").to_string())
-                            }
-                            Ok(None) => Value::Null,
-                            Err(_) => {
-                                // 如果 Option<NaiveDateTime> 失败，尝试直接读取
-                                row.try_get::<_, NaiveDateTime>(i)
-                                    .map(|dt| {
-                                        Value::String(dt.format("%Y-%m-%d %H:%M:%S%.f").to_string())
-                                    })
-                                    .unwrap_or(Value::Null)
-                            }
-                        }
-                    }
+                    "bool" => row.try_get::<_, bool>(i).map(Value::Bool).unwrap_or(Value::Null),
+                    "timestamp" => match row.try_get::<_, Option<NaiveDateTime>>(i) {
+                        Ok(Some(dt)) => Value::String(dt.format("%Y-%m-%d %H:%M:%S%.f").to_string()),
+                        Ok(None) => Value::Null,
+                        Err(_) => row
+                            .try_get::<_, NaiveDateTime>(i)
+                            .map(|dt| Value::String(dt.format("%Y-%m-%d %H:%M:%S%.f").to_string()))
+                            .unwrap_or(Value::Null),
+                    },
                     "timestamptz" => {
-                        // timestamp with timezone - 尝试多种类型
-                        // 先尝试 DateTime<Utc>
                         if let Ok(Some(dt)) = row.try_get::<_, Option<DateTime<Utc>>>(i) {
                             Value::String(dt.format("%Y-%m-%d %H:%M:%S%.f UTC").to_string())
                         } else if let Ok(dt) = row.try_get::<_, DateTime<Utc>>(i) {
                             Value::String(dt.format("%Y-%m-%d %H:%M:%S%.f UTC").to_string())
                         } else if let Ok(Some(dt)) = row.try_get::<_, Option<NaiveDateTime>>(i) {
-                            // 如果 timestamptz 被读取为 NaiveDateTime
                             Value::String(dt.format("%Y-%m-%d %H:%M:%S%.f").to_string())
                         } else {
                             Value::Null
                         }
                     }
-                    "date" => {
-                        // date
-                        match row.try_get::<_, Option<NaiveDate>>(i) {
-                            Ok(Some(date)) => Value::String(date.format("%Y-%m-%d").to_string()),
-                            Ok(None) => Value::Null,
-                            Err(_) => row
-                                .try_get::<_, NaiveDate>(i)
-                                .map(|date| Value::String(date.format("%Y-%m-%d").to_string()))
-                                .unwrap_or(Value::Null),
-                        }
-                    }
-                    "time" | "timetz" => {
-                        // time (with or without timezone)
-                        match row.try_get::<_, Option<NaiveTime>>(i) {
-                            Ok(Some(time)) => Value::String(time.format("%H:%M:%S%.f").to_string()),
-                            Ok(None) => Value::Null,
-                            Err(_) => row
-                                .try_get::<_, NaiveTime>(i)
-                                .map(|time| Value::String(time.format("%H:%M:%S%.f").to_string()))
-                                .unwrap_or(Value::Null),
-                        }
-                    }
-                    "json" | "jsonb" => {
-                        // JSON 类型先作为文本读取，然后解析
-                        match row.try_get::<_, String>(i) {
-                            Ok(json_str) => {
-                                serde_json::from_str(&json_str).unwrap_or(Value::String(json_str))
-                            }
-                            Err(_) => Value::Null,
-                        }
-                    }
-                    _ => {
-                        // 默认作为文本处理
-                        row.try_get::<_, String>(i)
-                            .map(Value::String)
-                            .unwrap_or(Value::Null)
-                    }
+                    "date" => match row.try_get::<_, Option<NaiveDate>>(i) {
+                        Ok(Some(date)) => Value::String(date.format("%Y-%m-%d").to_string()),
+                        Ok(None) => Value::Null,
+                        Err(_) => row
+                            .try_get::<_, NaiveDate>(i)
+                            .map(|date| Value::String(date.format("%Y-%m-%d").to_string()))
+                            .unwrap_or(Value::Null),
+                    },
+                    "time" | "timetz" => match row.try_get::<_, Option<NaiveTime>>(i) {
+                        Ok(Some(time)) => Value::String(time.format("%H:%M:%S%.f").to_string()),
+                        Ok(None) => Value::Null,
+                        Err(_) => row
+                            .try_get::<_, NaiveTime>(i)
+                            .map(|time| Value::String(time.format("%H:%M:%S%.f").to_string()))
+                            .unwrap_or(Value::Null),
+                    },
+                    "json" | "jsonb" => match row.try_get::<_, String>(i) {
+                        Ok(json_str) => serde_json::from_str(&json_str).unwrap_or(Value::String(json_str)),
+                        Err(_) => Value::Null,
+                    },
+                    _ => row
+                        .try_get::<_, String>(i)
+                        .map(Value::String)
+                        .unwrap_or(Value::Null),
                 }
             };
             row_map.insert(col_name.clone(), value);
         }
         result_rows.push(row_map);
     }
+    result_rows
+}
 
-    let total = result_rows.len();
-    let truncated = total >= 100;
+/// 转换 MySQL 行数据为 JSON 格式
+fn convert_mysql_rows(columns: &[String], rows: &[mysql_async::Row]) -> Vec<HashMap<String, Value>> {
+    let mut result_rows = Vec::new();
+    for row in rows {
+        let mut row_map = HashMap::new();
+        for (i, col_name) in columns.iter().enumerate() {
+            let raw_value = row.as_ref(i);
 
-    let result = QueryResult {
-        columns,
-        rows: result_rows,
-        total,
-        exec_time_ms,
-        sql: parsed_sql.clone(),
-        truncated,
-    };
+            let value: Value = match raw_value {
+                Some(mysql_async::Value::NULL) => Value::Null,
+                Some(mysql_async::Value::Bytes(bytes)) => {
+                    // 尝试解析为 UTF-8 字符串
+                    String::from_utf8(bytes.clone())
+                        .map(Value::String)
+                        .unwrap_or_else(|_| Value::String(format!("{:?}", bytes)))
+                }
+                Some(mysql_async::Value::Int(num)) => Value::Number(serde_json::Number::from(*num)),
+                Some(mysql_async::Value::UInt(num)) => {
+                    if *num <= i64::MAX as u64 {
+                        Value::Number(serde_json::Number::from(*num as i64))
+                    } else {
+                        Value::String(num.to_string())
+                    }
+                }
+                Some(mysql_async::Value::Float(num)) => serde_json::Number::from_f64(*num as f64)
+                    .map(Value::Number)
+                    .unwrap_or(Value::Null),
+                Some(mysql_async::Value::Double(num)) => serde_json::Number::from_f64(*num)
+                    .map(Value::Number)
+                    .unwrap_or(Value::Null),
+                None => Value::Null,
+                _ => Value::Null,
+            };
 
-    // 保存查询历史（SQL 查询类型）
-    let _ = cache_service::save_query_history(
-        &request.database_id,
-        "sql",
-        Some(&parsed_sql),
-        None,
-        Some(exec_time_ms),
-        "success",
-    );
-
-    Ok(result)
+            row_map.insert(col_name.clone(), value);
+        }
+        result_rows.push(row_map);
+    }
+    result_rows
 }
 
 /// 取消正在执行的查询（简化实现：返回成功）

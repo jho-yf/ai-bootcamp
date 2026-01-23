@@ -2,6 +2,16 @@ use chrono::{DateTime, Utc};
 /// 数据库连接模型
 use serde::{Deserialize, Serialize};
 
+/// 数据库类型
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum DatabaseType {
+    /// PostgreSQL 数据库
+    PostgreSQL,
+    /// MySQL 数据库
+    MySQL,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct DatabaseConnection {
@@ -10,6 +20,9 @@ pub struct DatabaseConnection {
 
     /// 用户自定义的连接名称（如 "生产数据库"、"测试环境"）
     pub name: String,
+
+    /// 数据库类型
+    pub database_type: DatabaseType,
 
     /// 数据库主机地址
     pub host: String,
@@ -55,6 +68,7 @@ pub enum ConnectionStatus {
 #[serde(rename_all = "camelCase")]
 pub struct AddDatabaseRequest {
     pub name: String,
+    pub database_type: DatabaseType,
     pub host: String,
     pub port: u16,
     pub database_name: String,
@@ -68,6 +82,7 @@ pub struct AddDatabaseRequest {
 pub struct UpdateDatabaseRequest {
     pub id: String,
     pub name: Option<String>,
+    pub database_type: Option<DatabaseType>,
     pub host: Option<String>,
     pub port: Option<u16>,
     pub database_name: Option<String>,
@@ -77,10 +92,12 @@ pub struct UpdateDatabaseRequest {
 
 /// 测试连接请求
 #[derive(Debug, Clone, Deserialize)]
-#[serde(rename_all = "camelCase")]
 pub struct TestConnectionRequest {
+    #[serde(rename = "databaseType")]
+    pub database_type: DatabaseType,
     pub host: String,
     pub port: u16,
+    #[serde(rename = "databaseName")]
     pub database_name: String,
     pub user: String,
     pub password: String,

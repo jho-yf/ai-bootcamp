@@ -3,9 +3,9 @@
  * 添加/编辑数据库连接的表单对话框
  */
 import React, { useEffect, useState } from "react";
-import { Modal, Form, Input, InputNumber, Button, Space, message } from "antd";
+import { Modal, Form, Input, InputNumber, Button, Space, message, Select } from "antd";
 import { ThunderboltOutlined } from "@ant-design/icons";
-import type { DatabaseConnection, AddDatabaseRequest } from "../services/types";
+import type { DatabaseConnection, AddDatabaseRequest, DatabaseType } from "../services/types";
 import * as api from "../services/api";
 
 interface AddDatabaseDialogProps {
@@ -25,11 +25,20 @@ export const AddDatabaseDialog: React.FC<AddDatabaseDialogProps> = ({
 }) => {
   const [form] = Form.useForm();
   const [testing, setTesting] = useState(false);
+  const [databaseType, setDatabaseType] = useState<DatabaseType>("postgresql");
+
+  // 根据数据库类型获取默认端口
+  const getDefaultPort = (type: DatabaseType): number => {
+    return type === "mysql" ? 3306 : 5432;
+  };
 
   useEffect(() => {
     if (editing) {
+      const dbType = editing.databaseType || "postgresql";
+      setDatabaseType(dbType);
       form.setFieldsValue({
         name: editing.name,
+        databaseType: dbType,
         host: editing.host,
         port: editing.port,
         databaseName: editing.databaseName,
@@ -38,6 +47,11 @@ export const AddDatabaseDialog: React.FC<AddDatabaseDialogProps> = ({
       });
     } else {
       form.resetFields();
+      form.setFieldsValue({
+        databaseType: "postgresql",
+        port: 5432,
+      });
+      setDatabaseType("postgresql");
     }
     // 重置测试状态
     setTesting(false);
@@ -47,6 +61,7 @@ export const AddDatabaseDialog: React.FC<AddDatabaseDialogProps> = ({
     try {
       // 验证必填字段（除了 name）
       const values = await form.validateFields([
+        "databaseType",
         "host",
         "port",
         "databaseName",
@@ -57,6 +72,7 @@ export const AddDatabaseDialog: React.FC<AddDatabaseDialogProps> = ({
       setTesting(true);
 
       const result = await api.testConnection({
+        databaseType: values.databaseType,
         host: values.host,
         port: values.port,
         databaseName: values.databaseName,
@@ -123,6 +139,7 @@ export const AddDatabaseDialog: React.FC<AddDatabaseDialogProps> = ({
         form={form}
         layout="vertical"
         initialValues={{
+          databaseType: "postgresql",
           port: 5432,
         }}
       >
@@ -132,6 +149,25 @@ export const AddDatabaseDialog: React.FC<AddDatabaseDialogProps> = ({
           rules={[{ required: true, message: "请输入连接名称" }]}
         >
           <Input placeholder="例如：生产数据库" />
+        </Form.Item>
+
+        <Form.Item
+          name="databaseType"
+          label="数据库类型"
+          rules={[{ required: true, message: "请选择数据库类型" }]}
+        >
+          <Select
+            placeholder="选择数据库类型"
+            onChange={(value: DatabaseType) => {
+              setDatabaseType(value);
+              // 更新默认端口
+              form.setFieldsValue({ port: getDefaultPort(value) });
+            }}
+            options={[
+              { label: "PostgreSQL", value: "postgresql" },
+              { label: "MySQL", value: "mysql" },
+            ]}
+          />
         </Form.Item>
 
         <Form.Item

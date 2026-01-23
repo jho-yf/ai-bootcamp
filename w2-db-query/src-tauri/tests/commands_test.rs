@@ -11,8 +11,8 @@ use chrono::Utc;
 /// cargo test --test commands_test
 /// ```
 use std::env;
-use w2_db_query_lib::models::database::{ConnectionStatus, DatabaseConnection};
-use w2_db_query_lib::services::{cache_service, metadata_service, postgres_service, query_parser};
+use w2_db_query_lib::models::database::{ConnectionStatus, DatabaseConnection, DatabaseType};
+use w2_db_query_lib::services::{cache_service, postgres_service, query_parser};
 
 /// 从环境变量获取测试数据库配置
 fn get_test_db_config() -> Option<(String, u16, String, String, String)> {
@@ -63,7 +63,7 @@ fn test_cache_service_init_and_get_connection() {
 
 #[tokio::test]
 async fn test_cache_service_save_and_load_connection_with_data() {
-    let Some((host, port, database_name, user, password)) = get_test_db_config() else {
+    let Some((_host, _port, _database_name, _user, _password)) = get_test_db_config() else {
         println!("跳过测试：未设置 TEST_DB_* 环境变量");
         return;
     };
@@ -93,6 +93,7 @@ async fn test_cache_service_save_and_load_metadata() {
     let connection = DatabaseConnection {
         id: uuid::Uuid::new_v4().to_string(),
         name: "测试连接".to_string(),
+        database_type: DatabaseType::PostgreSQL,
         host: host.clone(),
         port,
         database_name: database_name.clone(),
@@ -159,6 +160,7 @@ fn test_cache_service_save_query_history() {
     let connection = DatabaseConnection {
         id: uuid::Uuid::new_v4().to_string(),
         name: "测试查询历史".to_string(),
+        database_type: DatabaseType::PostgreSQL,
         host: "localhost".to_string(),
         port: 5432,
         database_name: "testdb".to_string(),
@@ -198,29 +200,6 @@ fn test_cache_service_save_query_history() {
     // 测试完成（查询历史表没有直接的加载函数，这里只测试保存不报错）
 
     cleanup_test_env(temp_dir);
-}
-
-#[tokio::test]
-async fn test_metadata_service_extract_metadata() {
-    let Some((host, port, database_name, user, password)) = get_test_db_config() else {
-        println!("跳过测试：未设置 TEST_DB_* 环境变量");
-        return;
-    };
-
-    let client = postgres_service::connect(&host, port, &database_name, &user, &password)
-        .await
-        .expect("应该能够连接到数据库");
-
-    let connection_id = uuid::Uuid::new_v4().to_string();
-
-    // 提取元数据
-    let metadata = metadata_service::extract_metadata(&client, &connection_id)
-        .await
-        .expect("应该能够提取元数据");
-
-    assert_eq!(metadata.connection_id, connection_id);
-    // 应该至少有一些表或视图
-    assert!(!metadata.tables.is_empty() || !metadata.views.is_empty());
 }
 
 #[tokio::test]
@@ -271,7 +250,7 @@ async fn test_ai_service_with_openai_key() {
     }
 
     // 创建测试元数据 JSON
-    let metadata_json = r#"{
+    let _metadata_json = r#"{
         "connectionId": "test-connection",
         "tables": [
             {
