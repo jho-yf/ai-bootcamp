@@ -179,9 +179,79 @@ impl DatabaseService for PostgresService {
             _ => return Err(AppError::DatabaseConnection("Invalid connection type".to_string())),
         };
 
-        // 复用现有的元数据提取逻辑
-        let metadata = crate::services::postgres_service::extract_metadata(client, connection_id).await?;
-        Ok(metadata)
+        // 提取表
+        let mut tables = extract_tables(client).await?;
+
+        // 提取主键
+        let primary_keys_map = extract_primary_keys(client, &tables).await?;
+
+        // 提取外键
+        let foreign_keys_map = extract_foreign_keys(client, &tables).await?;
+
+        // 组装表信息
+        let mut table_column_map: std::collections::HashMap<String, Vec<crate::models::metadata::ColumnInfo>> =
+            std::collections::HashMap::new();
+
+        // 为每个表查询其列
+        for table in &tables {
+            let table_key = format!("{}.{}", table.schema, table.name);
+            let table_columns = client
+                .query(
+                    "SELECT column_name, data_type, is_nullable, column_default, ordinal_position
+                     FROM information_schema.columns
+                     WHERE table_schema = $1 AND table_name = $2
+                     ORDER BY ordinal_position",
+                    &[&table.schema, &table.name],
+                )
+                .await
+                .map_err(|e| AppError::MetadataExtraction(format!("查询表列失败: {}", e)))?;
+
+            let cols: Vec<crate::models::metadata::ColumnInfo> = table_columns
+                .into_iter()
+                .map(|row| crate::models::metadata::ColumnInfo {
+                    name: row.get("column_name"),
+                    data_type: row.get("data_type"),
+                    nullable: matches!(row.get::<_, String>("is_nullable").as_str(), "YES"),
+                    default_value: row.get::<_, Option<String>>("column_default"),
+                    is_primary_key: false,
+                    ordinal_position: row.get::<_, i32>("ordinal_position"),
+                })
+                .collect();
+
+            table_column_map.insert(table_key, cols);
+        }
+
+        for table in &mut tables {
+            let table_key = format!("{}.{}", table.schema, table.name);
+
+            // 填充列
+            if let Some(cols) = table_column_map.get(&table_key) {
+                table.columns = cols.clone();
+            }
+
+            // 填充主键
+            if let Some(pk) = primary_keys_map.iter().find(|(k, _)| **k == table_key) {
+                table.primary_keys = pk.1.clone();
+                for col in &mut table.columns {
+                    col.is_primary_key = table.primary_keys.contains(&col.name);
+                }
+            }
+
+            // 填充外键
+            if let Some(fk) = foreign_keys_map.iter().find(|(k, _)| **k == table_key) {
+                table.foreign_keys = fk.1.clone();
+            }
+        }
+
+        // 提取视图
+        let views = extract_views(client).await?;
+
+        Ok(DatabaseMetadata {
+            connection_id: connection_id.to_string(),
+            tables,
+            views,
+            extracted_at: chrono::Utc::now(),
+        })
     }
 
     fn convert_row_to_json(
@@ -207,6 +277,147 @@ static POSTGRES_DIALECT: SqlDialect = SqlDialect {
     parameter_syntax: ParameterSyntax::DollarNumeric,
     exclude_schemas: &["information_schema", "pg_catalog", "pg_toast"],
 };
+
+// 辅助函数：提取所有表
+async fn extract_tables(client: &tokio_postgres::Client) -> Result<Vec<crate::models::metadata::TableInfo>, AppError> {
+    let rows = client
+        .query(
+            "SELECT table_schema, table_name, table_type
+             FROM information_schema.tables
+             WHERE table_schema NOT IN ('information_schema', 'pg_catalog', 'pg_toast')
+             AND table_type IN ('BASE TABLE', 'VIEW')
+             ORDER BY table_schema, table_name",
+            &[],
+        )
+        .await
+        .map_err(|e| AppError::QueryExecution(format!("查询表失败: {}", e)))?;
+
+    let mut tables = Vec::new();
+    for row in rows {
+        let schema: String = row.get("table_schema");
+        let name: String = row.get("table_name");
+        let table_type: String = row.get("table_type");
+
+        tables.push(crate::models::metadata::TableInfo {
+            schema,
+            name,
+            table_type,
+            columns: vec![],
+            primary_keys: vec![],
+            foreign_keys: vec![],
+        });
+    }
+
+    Ok(tables)
+}
+
+// 辅助函数：提取主键信息
+async fn extract_primary_keys(
+    client: &tokio_postgres::Client,
+    tables: &[crate::models::metadata::TableInfo],
+) -> Result<Vec<(String, Vec<String>)>, AppError> {
+    let mut result = Vec::new();
+
+    for table in tables {
+        let rows = client
+            .query(
+                "SELECT kcu.column_name
+                 FROM information_schema.table_constraints tc
+                 JOIN information_schema.key_column_usage kcu
+                   ON tc.constraint_name = kcu.constraint_name
+                   AND tc.table_schema = kcu.table_schema
+                 WHERE tc.constraint_type = 'PRIMARY KEY'
+                   AND tc.table_schema = $1
+                   AND tc.table_name = $2
+                 ORDER BY kcu.ordinal_position",
+                &[&table.schema, &table.name],
+            )
+            .await
+            .map_err(|e| AppError::QueryExecution(format!("查询主键失败: {}", e)))?;
+
+        let primary_keys: Vec<String> = rows
+            .into_iter()
+            .map(|row| row.get("column_name"))
+            .collect();
+
+        result.push((format!("{}.{}", table.schema, table.name), primary_keys));
+    }
+
+    Ok(result)
+}
+
+// 辅助函数：提取外键信息
+async fn extract_foreign_keys(
+    client: &tokio_postgres::Client,
+    tables: &[crate::models::metadata::TableInfo],
+) -> Result<Vec<(String, Vec<crate::models::metadata::ForeignKeyInfo>)>, AppError> {
+    let mut result = Vec::new();
+
+    for table in tables {
+        let rows = client
+            .query(
+                "SELECT
+                        tc.constraint_name,
+                        kcu.column_name,
+                        ccu.table_name AS referenced_table,
+                        ccu.column_name AS referenced_column
+                     FROM information_schema.table_constraints tc
+                     JOIN information_schema.key_column_usage kcu
+                       ON tc.constraint_name = kcu.constraint_name
+                       AND tc.table_schema = kcu.table_schema
+                     JOIN information_schema.constraint_column_usage ccu
+                       ON ccu.constraint_name = tc.constraint_name
+                       AND ccu.table_schema = tc.table_schema
+                     WHERE tc.constraint_type = 'FOREIGN KEY'
+                       AND tc.table_schema = $1
+                       AND tc.table_name = $2
+                     ORDER BY tc.constraint_name, kcu.ordinal_position",
+                &[&table.schema, &table.name],
+            )
+            .await
+            .map_err(|e| AppError::QueryExecution(format!("查询外键失败: {}", e)))?;
+
+        let foreign_keys: Vec<crate::models::metadata::ForeignKeyInfo> = rows
+            .into_iter()
+            .map(|row| crate::models::metadata::ForeignKeyInfo {
+                constraint_name: row.get("constraint_name"),
+                column_name: row.get("column_name"),
+                referenced_table: row.get("referenced_table"),
+                referenced_column: row.get("referenced_column"),
+            })
+            .collect();
+
+        result.push((format!("{}.{}", table.schema, table.name), foreign_keys));
+    }
+
+    Ok(result)
+}
+
+// 辅助函数：提取视图信息
+async fn extract_views(client: &tokio_postgres::Client) -> Result<Vec<crate::models::metadata::ViewInfo>, AppError> {
+    let rows = client
+        .query(
+            "SELECT table_schema, table_name, view_definition
+             FROM information_schema.views
+             WHERE table_schema NOT IN ('information_schema', 'pg_catalog', 'pg_toast')
+             ORDER BY table_schema, table_name",
+            &[],
+        )
+        .await
+        .map_err(|e| AppError::QueryExecution(format!("查询视图失败: {}", e)))?;
+
+    let mut views = Vec::new();
+    for row in rows {
+        views.push(crate::models::metadata::ViewInfo {
+            schema: row.get("table_schema"),
+            name: row.get("table_name"),
+            columns: vec![],
+            definition: row.get("view_definition"),
+        });
+    }
+
+    Ok(views)
+}
 
 #[cfg(test)]
 mod tests {
