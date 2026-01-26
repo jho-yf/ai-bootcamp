@@ -116,3 +116,7 @@ struct QueryResult {
 ## 添加 MySQL 数据库支持
 
 参考 `./w2-db-query` 中的 PostgreSQL 的实现，进行 MySQL 数据库的 metadata 提取支持和查询支持，同时自然语言生成 SQL 也要支持 MySQL 语法的支持。相关文档输出到 `./specs/002-mysql-support` 中。
+
+## 架构优化
+
+@rust-system-architect (agent) 帮我仔细查看 `./w2-db-query/src-tauri` 的架构，目前因为添加了新的数据库，需要重新考虑整个的设计，最好设计一套 Interface，为以后添加更多数据留有余地，不至于到处修改已有的代码。设计要符合 Open-Close 和 SOLID 原则 
