@@ -1,7 +1,7 @@
 /// 元数据管理 Commands
-use crate::models::database::DatabaseType;
 use crate::models::metadata::DatabaseMetadata;
-use crate::services::{cache_service, mysql_service, postgres_service};
+use crate::services::cache_service;
+use crate::services::database;
 
 /// 获取数据库元数据（优先返回缓存）
 #[tauri::command]
@@ -31,41 +31,29 @@ pub async fn refresh_metadata(database_id: String) -> Result<DatabaseMetadata, S
         .find(|c| c.id == database_id)
         .ok_or_else(|| "数据库连接不存在".to_string())?;
 
-    // 根据数据库类型提取元数据
-    let metadata = match connection.database_type {
-        DatabaseType::PostgreSQL => {
-            // PostgreSQL 元数据提取
-            let client = postgres_service::connect(
-                &connection.host,
-                connection.port,
-                &connection.database_name,
-                &connection.user,
-                &connection.password,
-            )
-            .await
-            .map_err(|e| format!("连接失败: {}", e))?;
+    // 使用工厂模式提取元数据
+    let factory = database::get_global_factory();
+    let service = factory
+        .get_service(&connection.database_type)
+        .map_err(|e| format!("不支持的数据库类型: {}", e))?;
 
-            postgres_service::extract_metadata(&client, &database_id)
-                .await
-                .map_err(|e| format!("提取元数据失败: {}", e))?
-        }
-        DatabaseType::MySQL => {
-            // MySQL 元数据提取
-            let pool = mysql_service::connect(
-                &connection.host,
-                connection.port,
-                &connection.database_name,
-                &connection.user,
-                &connection.password,
-            )
-            .await
-            .map_err(|e| format!("连接失败: {}", e))?;
+    // 连接数据库
+    let db_connection = service
+        .connect(
+            &connection.host,
+            connection.port,
+            &connection.database_name,
+            &connection.user,
+            &connection.password,
+        )
+        .await
+        .map_err(|e| format!("连接失败: {}", e))?;
 
-            mysql_service::extract_metadata(&pool, &database_id)
-                .await
-                .map_err(|e| format!("提取元数据失败: {}", e))?
-        }
-    };
+    // 提取元数据
+    let metadata = service
+        .extract_metadata(&db_connection, &database_id)
+        .await
+        .map_err(|e| format!("提取元数据失败: {}", e))?;
 
     // 保存到缓存
     let metadata_json =

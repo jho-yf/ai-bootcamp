@@ -17,6 +17,9 @@ use commands::query::{cancel_query, run_sql_query};
 
 /// 初始化应用：设置数据库等基础设施
 fn init_app() -> Result<(), AppError> {
+    // 初始化数据库服务工厂（必须在其他初始化之前）
+    services::database::init_global_factory();
+
     // 初始化 SQLite 数据库
     cache_service::init_database()?;
     Ok(())

@@ -1,9 +1,10 @@
 /// 数据库连接管理 Commands
 use crate::models::database::{
-    AddDatabaseRequest, ConnectionStatus, DatabaseConnection, DatabaseType,
+    AddDatabaseRequest, ConnectionStatus, DatabaseConnection,
     TestConnectionRequest, UpdateDatabaseRequest,
 };
-use crate::services::{cache_service, mysql_service, postgres_service};
+use crate::services::cache_service;
+use crate::services::database;
 use chrono::Utc;
 use uuid::Uuid;
 
@@ -30,29 +31,21 @@ pub async fn add_database(request: AddDatabaseRequest) -> Result<DatabaseConnect
         return Err("用户名不能为空".to_string());
     }
 
-    // 测试连接（根据数据库类型选择服务）
-    let test_result = match request.database_type {
-        DatabaseType::PostgreSQL => {
-            postgres_service::test_connection(
-                &request.host,
-                request.port,
-                &request.database_name,
-                &request.user,
-                &request.password,
-            )
-            .await
-        }
-        DatabaseType::MySQL => {
-            mysql_service::test_connection(
-                &request.host,
-                request.port,
-                &request.database_name,
-                &request.user,
-                &request.password,
-            )
-            .await
-        }
-    };
+    // 测试连接（使用工厂模式）
+    let factory = database::get_global_factory();
+    let service = factory
+        .get_service(&request.database_type)
+        .map_err(|e| format!("不支持的数据库类型: {}", e))?;
+
+    let test_result = service
+        .test_connection(
+            &request.host,
+            request.port,
+            &request.database_name,
+            &request.user,
+            &request.password,
+        )
+        .await;
 
     test_result.map_err(|e| format!("无法连接到数据库: {}", e))?;
 
@@ -131,28 +124,20 @@ pub async fn update_database(request: UpdateDatabaseRequest) -> Result<DatabaseC
     connection.updated_at = Utc::now();
 
     if needs_test {
-        let test_result = match connection.database_type {
-            DatabaseType::PostgreSQL => {
-                postgres_service::test_connection(
-                    &connection.host,
-                    connection.port,
-                    &connection.database_name,
-                    &connection.user,
-                    &connection.password,
-                )
-                .await
-            }
-            DatabaseType::MySQL => {
-                mysql_service::test_connection(
-                    &connection.host,
-                    connection.port,
-                    &connection.database_name,
-                    &connection.user,
-                    &connection.password,
-                )
-                .await
-            }
-        };
+        let factory = database::get_global_factory();
+        let service = factory
+            .get_service(&connection.database_type)
+            .map_err(|e| format!("不支持的数据库类型: {}", e))?;
+
+        let test_result = service
+            .test_connection(
+                &connection.host,
+                connection.port,
+                &connection.database_name,
+                &connection.user,
+                &connection.password,
+            )
+            .await;
 
         match test_result {
             Ok(_) => connection.status = ConnectionStatus::Connected,
@@ -176,29 +161,21 @@ pub async fn delete_database(database_id: String) -> Result<(), String> {
 /// 测试数据库连接
 #[tauri::command]
 pub async fn test_connection(request: TestConnectionRequest) -> Result<bool, String> {
-    // 根据 database_type 路由到相应的服务
-    let result = match request.database_type {
-        DatabaseType::PostgreSQL => {
-            postgres_service::test_connection(
-                &request.host,
-                request.port,
-                &request.database_name,
-                &request.user,
-                &request.password,
-            )
-            .await
-        }
-        DatabaseType::MySQL => {
-            mysql_service::test_connection(
-                &request.host,
-                request.port,
-                &request.database_name,
-                &request.user,
-                &request.password,
-            )
-            .await
-        }
-    };
+    // 使用工厂模式获取服务
+    let factory = database::get_global_factory();
+    let service = factory
+        .get_service(&request.database_type)
+        .map_err(|e| format!("不支持的数据库类型: {}", e))?;
 
-    result.map_err(|e| e.to_string())
+    // 使用抽象接口测试连接
+    service
+        .test_connection(
+            &request.host,
+            request.port,
+            &request.database_name,
+            &request.user,
+            &request.password,
+        )
+        .await
+        .map_err(|e| e.to_string())
 }
