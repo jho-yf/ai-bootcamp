@@ -486,21 +486,459 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_service_name() {
+    fn test_service_properties() {
         let service = MySqlService::new();
+
+        // 验证服务名称
         assert_eq!(service.service_name(), "MySQL");
+
+        // 验证 SQL 方言配置
+        let dialect = service.get_sql_dialect();
+        assert_eq!(dialect.name, "MySQL");
+        assert_eq!(dialect.string_quote, '\'');
+        assert_eq!(dialect.identifier_quote, '`');  // MySQL 使用反引号
+        assert!(dialect.supports_limit);
+        assert_eq!(dialect.limit_syntax, LimitSyntax::Clause);
+        assert_eq!(dialect.parameter_syntax, ParameterSyntax::QuestionMark);  // MySQL 使用 ?
+
+        // 验证排除的模式列表
+        assert!(dialect.exclude_schemas.contains(&"information_schema"));
+        assert!(dialect.exclude_schemas.contains(&"performance_schema"));
+        assert!(dialect.exclude_schemas.contains(&"mysql"));
+        assert!(dialect.exclude_schemas.contains(&"sys"));
     }
 
     #[test]
-    fn test_sql_dialect() {
+    fn test_service_creation() {
+        // 测试服务创建
+        let service1 = MySqlService::new();
+        let service2 = MySqlService::new();
+
+        // 验证服务属性
+        assert_eq!(service1.service_name(), service2.service_name());
+
+        // 验证方言一致性
+        let dialect1 = service1.get_sql_dialect();
+        let dialect2 = service2.get_sql_dialect();
+        assert_eq!(dialect1.name, dialect2.name);
+    }
+
+    #[test]
+    fn test_row_conversion() {
+        let service = MySqlService::new();
+
+        // 测试空行转换
+        let row = DbRow {
+            columns: vec![],
+            values: vec![],
+        };
+
+        let result = service.convert_row_to_json(&row, &[]);
+        assert!(result.is_ok());
+        let json_map = result.unwrap();
+        assert_eq!(json_map.len(), 0);
+
+        // 测试有数据的行转换
+        let row = DbRow {
+            columns: vec!["id".to_string(), "name".to_string()],
+            values: vec![
+                Value::Number(serde_json::Number::from(100)),
+                Value::String("mysql_test".to_string())
+            ],
+        };
+
+        let result = service.convert_row_to_json(&row, &row.columns);
+        assert!(result.is_ok());
+        let json_map = result.unwrap();
+        assert_eq!(json_map.len(), 2);
+        assert_eq!(json_map.get("id"), Some(&Value::Number(serde_json::Number::from(100))));
+        assert_eq!(json_map.get("name"), Some(&Value::String("mysql_test".to_string())));
+    }
+
+    #[test]
+    fn test_row_conversion_with_nulls() {
+        let service = MySqlService::new();
+
+        // 测试包含 NULL 值的行转换
+        let row = DbRow {
+            columns: vec!["id".to_string(), "name".to_string(), "email".to_string()],
+            values: vec![
+                Value::Number(serde_json::Number::from(1)),
+                Value::Null,
+                Value::String("test@example.com".to_string()),
+            ],
+        };
+
+        let result = service.convert_row_to_json(&row, &row.columns);
+        assert!(result.is_ok());
+        let json_map = result.unwrap();
+
+        assert_eq!(json_map.get("id"), Some(&Value::Number(serde_json::Number::from(1))));
+        assert_eq!(json_map.get("name"), Some(&Value::Null));
+        assert_eq!(json_map.get("email"), Some(&Value::String("test@example.com".to_string())));
+        assert_eq!(json_map.len(), 3);
+    }
+
+    #[test]
+    fn test_row_conversion_with_numeric_types() {
+        let service = MySqlService::new();
+
+        // 测试 MySQL 特定的数值类型转换
+        let row = DbRow {
+            columns: vec![
+                "tinyint_col".to_string(),
+                "smallint_col".to_string(),
+                "int_col".to_string(),
+                "bigint_col".to_string(),
+                "float_col".to_string(),
+                "double_col".to_string(),
+            ],
+            values: vec![
+                Value::Number(serde_json::Number::from(127)),      // TINYINT MAX
+                Value::Number(serde_json::Number::from(32767)),     // SMALLINT MAX
+                Value::Number(serde_json::Number::from(2147483647)), // INT MAX
+                Value::Number(serde_json::Number::from(9223372036854775807_i64)), // BIGINT MAX
+                Value::Number(serde_json::Number::from_f64(3.14f32 as f64).unwrap()), // FLOAT
+                Value::Number(serde_json::Number::from_f64(3.14159265359).unwrap()), // DOUBLE
+            ],
+        };
+
+        let result = service.convert_row_to_json(&row, &row.columns);
+        assert!(result.is_ok());
+        let json_map = result.unwrap();
+
+        assert_eq!(json_map.get("tinyint_col"), Some(&Value::Number(serde_json::Number::from(127))));
+        assert_eq!(json_map.get("smallint_col"), Some(&Value::Number(serde_json::Number::from(32767))));
+        assert_eq!(json_map.get("int_col"), Some(&Value::Number(serde_json::Number::from(2147483647))));
+        assert_eq!(json_map.get("bigint_col"), Some(&Value::Number(serde_json::Number::from(9223372036854775807_i64))));
+    }
+
+    #[test]
+    fn test_row_conversion_with_unsigned_integers() {
+        let service = MySqlService::new();
+
+        // 测试无符号整数（当超出 i64 范围时应转为字符串）
+        let row = DbRow {
+            columns: vec![
+                "normal_uint".to_string(),
+                "large_uint".to_string(),  // 模拟超出 i64::MAX 的情况
+                "negative_int".to_string(),
+            ],
+            values: vec![
+                Value::Number(serde_json::Number::from(4000000000_u64)),  // 在 i64 范围内
+                Value::String("18446744073709551615".to_string()),  // u64::MAX 作为字符串
+                Value::Number(serde_json::Number::from(-1000)),
+            ],
+        };
+
+        let result = service.convert_row_to_json(&row, &row.columns);
+        assert!(result.is_ok());
+        let json_map = result.unwrap();
+
+        // 验证正常范围内的无符号整数
+        assert_eq!(json_map.get("normal_uint"), Some(&Value::Number(serde_json::Number::from(4000000000_u64 as i64))));
+
+        // 验证超出范围的大整数转为字符串
+        assert_eq!(json_map.get("large_uint"), Some(&Value::String("18446744073709551615".to_string())));
+
+        // 验证负数
+        assert_eq!(json_map.get("negative_int"), Some(&Value::Number(serde_json::Number::from(-1000))));
+    }
+
+    #[test]
+    fn test_row_conversion_with_float_precision() {
+        let service = MySqlService::new();
+
+        // 测试浮点数精度问题
+        let row = DbRow {
+            columns: vec![
+                "zero_float".to_string(),
+                "negative_float".to_string(),
+                "very_small".to_string(),
+                "very_large".to_string(),
+                "nan_like".to_string(),
+            ],
+            values: vec![
+                Value::Number(serde_json::Number::from_f64(0.0).unwrap()),
+                Value::Number(serde_json::Number::from_f64(-123.456).unwrap()),
+                Value::Number(serde_json::Number::from_f64(0.000001).unwrap()),
+                Value::Number(serde_json::Number::from_f64(999999.999999).unwrap()),
+                Value::Null,  // JSON 不支持 NaN，转为 NULL
+            ],
+        };
+
+        let result = service.convert_row_to_json(&row, &row.columns);
+        assert!(result.is_ok());
+        let json_map = result.unwrap();
+
+        assert_eq!(json_map.get("zero_float"), Some(&Value::Number(serde_json::Number::from_f64(0.0).unwrap())));
+        assert_eq!(json_map.get("negative_float"), Some(&Value::Number(serde_json::Number::from_f64(-123.456).unwrap())));
+        assert_eq!(json_map.get("very_small"), Some(&Value::Number(serde_json::Number::from_f64(0.000001).unwrap())));
+        assert_eq!(json_map.get("nan_like"), Some(&Value::Null));
+    }
+
+    #[test]
+    fn test_row_conversion_with_string_types() {
+        let service = MySqlService::new();
+
+        // 测试 MySQL 字符串类型（CHAR, VARCHAR, TEXT）
+        let row = DbRow {
+            columns: vec![
+                "char_col".to_string(),
+                "varchar_col".to_string(),
+                "text_col".to_string(),
+                "empty_str".to_string(),
+                "special_chars".to_string(),
+            ],
+            values: vec![
+                Value::String("fixed".to_string()),
+                Value::String("variable".to_string()),
+                Value::String("long text content".to_string()),
+                Value::String("".to_string()),
+                Value::String("中文\n\t\r\"'".to_string()),
+            ],
+        };
+
+        let result = service.convert_row_to_json(&row, &row.columns);
+        assert!(result.is_ok());
+        let json_map = result.unwrap();
+
+        assert_eq!(json_map.get("char_col"), Some(&Value::String("fixed".to_string())));
+        assert_eq!(json_map.get("varchar_col"), Some(&Value::String("variable".to_string())));
+        assert_eq!(json_map.get("text_col"), Some(&Value::String("long text content".to_string())));
+        assert_eq!(json_map.get("empty_str"), Some(&Value::String("".to_string())));
+        assert_eq!(json_map.get("special_chars"), Some(&Value::String("中文\n\t\r\"'".to_string())));
+    }
+
+    #[test]
+    fn test_row_conversion_with_binary_data() {
+        let service = MySqlService::new();
+
+        // 测试二进制数据（BINARY, VARBINARY, BLOB）
+        let row = DbRow {
+            columns: vec![
+                "valid_utf8".to_string(),
+                "binary_data".to_string(),
+                "empty_blob".to_string(),
+            ],
+            values: vec![
+                Value::String("valid UTF-8 字符串".to_string()),
+                Value::String(vec![0xFF, 0xFE, 0xFD].iter().map(|b| format!("{:02x}", b)).collect()),  // 模拟二进制
+                Value::String("".to_string()),
+            ],
+        };
+
+        let result = service.convert_row_to_json(&row, &row.columns);
+        assert!(result.is_ok());
+        let json_map = result.unwrap();
+
+        assert_eq!(json_map.get("valid_utf8"), Some(&Value::String("valid UTF-8 字符串".to_string())));
+        assert!(json_map.get("binary_data").is_some());
+        assert_eq!(json_map.get("empty_blob"), Some(&Value::String("".to_string())));
+    }
+
+    #[test]
+    fn test_sql_dialect_mysql_features() {
         let service = MySqlService::new();
         let dialect = service.get_sql_dialect();
 
+        // 验证 MySQL 特定的 SQL 特性
         assert_eq!(dialect.name, "MySQL");
-        assert_eq!(dialect.string_quote, '\'');
-        assert_eq!(dialect.identifier_quote, '`');
-        assert_eq!(dialect.supports_limit, true);
-        assert_eq!(dialect.limit_syntax, LimitSyntax::Clause);
-        assert_eq!(dialect.parameter_syntax, ParameterSyntax::QuestionMark);
+        assert_eq!(dialect.identifier_quote, '`', "MySQL 使用反引号作为标识符引用");
+        assert_eq!(dialect.string_quote, '\'', "MySQL 使用单引号作为字符串引用");
+        assert_eq!(dialect.parameter_syntax, ParameterSyntax::QuestionMark, "MySQL 使用 ? 参数语法");
+        assert_eq!(dialect.limit_syntax, LimitSyntax::Clause, "MySQL 支持 LIMIT ... OFFSET");
+        assert!(dialect.supports_limit, "MySQL 支持 LIMIT 子句");
+
+        // 验证排除的系统数据库
+        assert!(dialect.exclude_schemas.contains(&"information_schema"));
+        assert!(dialect.exclude_schemas.contains(&"performance_schema"));
+        assert!(dialect.exclude_schemas.contains(&"mysql"));
+        assert!(dialect.exclude_schemas.contains(&"sys"));
+        assert_eq!(dialect.exclude_schemas.len(), 4);
+    }
+
+    #[test]
+    fn test_row_conversion_with_datetime_simulation() {
+        let service = MySqlService::new();
+
+        // 模拟 MySQL DATETIME/TIMESTAMP 类型（在实现中会被转为字符串）
+        let row = DbRow {
+            columns: vec![
+                "date_col".to_string(),
+                "datetime_col".to_string(),
+                "timestamp_col".to_string(),
+                "null_date".to_string(),
+            ],
+            values: vec![
+                Value::String("2026-01-27".to_string()),
+                Value::String("2026-01-27 12:34:56".to_string()),
+                Value::String("2026-01-27 12:34:56.123456".to_string()),
+                Value::Null,
+            ],
+        };
+
+        let result = service.convert_row_to_json(&row, &row.columns);
+        assert!(result.is_ok());
+        let json_map = result.unwrap();
+
+        assert_eq!(json_map.get("date_col"), Some(&Value::String("2026-01-27".to_string())));
+        assert_eq!(json_map.get("datetime_col"), Some(&Value::String("2026-01-27 12:34:56".to_string())));
+        assert_eq!(json_map.get("timestamp_col"), Some(&Value::String("2026-01-27 12:34:56.123456".to_string())));
+        assert_eq!(json_map.get("null_date"), Some(&Value::Null));
+    }
+
+    #[test]
+    fn test_row_conversion_with_json_type() {
+        let service = MySqlService::new();
+
+        // 模拟 MySQL JSON 类型（作为字符串存储）
+        let row = DbRow {
+            columns: vec![
+                "json_col".to_string(),
+                "json_object".to_string(),
+                "json_array".to_string(),
+            ],
+            values: vec![
+                Value::String("\"simple string\"".to_string()),
+                Value::String("{\"key\": \"value\", \"number\": 123}".to_string()),
+                Value::String("[1, 2, 3, \"four\"]".to_string()),
+            ],
+        };
+
+        let result = service.convert_row_to_json(&row, &row.columns);
+        assert!(result.is_ok());
+        let json_map = result.unwrap();
+
+        assert_eq!(json_map.get("json_col"), Some(&Value::String("\"simple string\"".to_string())));
+        assert_eq!(json_map.get("json_object"), Some(&Value::String("{\"key\": \"value\", \"number\": 123}".to_string())));
+        assert_eq!(json_map.get("json_array"), Some(&Value::String("[1, 2, 3, \"four\"]".to_string())));
+    }
+
+    #[test]
+    fn test_row_conversion_with_bit_type() {
+        let service = MySqlService::new();
+
+        // 模拟 MySQL BIT 类型（作为值转换）
+        let row = DbRow {
+            columns: vec![
+                "bit1".to_string(),
+                "bit8".to_string(),
+                "bit16".to_string(),
+            ],
+            values: vec![
+                Value::Number(serde_json::Number::from(1)),      // b'1'
+                Value::Number(serde_json::Number::from(255)),    // b'11111111'
+                Value::Number(serde_json::Number::from(65535)),  // b'1111111111111111'
+            ],
+        };
+
+        let result = service.convert_row_to_json(&row, &row.columns);
+        assert!(result.is_ok());
+        let json_map = result.unwrap();
+
+        assert_eq!(json_map.get("bit1"), Some(&Value::Number(serde_json::Number::from(1))));
+        assert_eq!(json_map.get("bit8"), Some(&Value::Number(serde_json::Number::from(255))));
+        assert_eq!(json_map.get("bit16"), Some(&Value::Number(serde_json::Number::from(65535))));
+    }
+
+    #[test]
+    fn test_row_conversion_empty_vs_null() {
+        let service = MySqlService::new();
+
+        // 测试空字符串 vs NULL vs 0 的区别
+        let row = DbRow {
+            columns: vec![
+                "empty_str".to_string(),
+                "null_val".to_string(),
+                "zero_int".to_string(),
+            ],
+            values: vec![
+                Value::String("".to_string()),  // 空字符串
+                Value::Null,  // NULL
+                Value::Number(serde_json::Number::from(0)),  // 0
+            ],
+        };
+
+        let result = service.convert_row_to_json(&row, &row.columns);
+        assert!(result.is_ok());
+        let json_map = result.unwrap();
+
+        // 三者应该都是不同的值
+        assert_eq!(json_map.get("empty_str"), Some(&Value::String("".to_string())));
+        assert_eq!(json_map.get("null_val"), Some(&Value::Null));
+        assert_eq!(json_map.get("zero_int"), Some(&Value::Number(serde_json::Number::from(0))));
+
+        assert_ne!(json_map.get("empty_str"), json_map.get("null_val"));
+        assert_ne!(json_map.get("null_val"), json_map.get("zero_int"));
+        assert_ne!(json_map.get("empty_str"), json_map.get("zero_int"));
+    }
+
+    #[test]
+    fn test_service_trait_compliance() {
+        let service = MySqlService::new();
+
+        // 测试所有必需的 trait 方法都可以被调用
+        let _name = service.service_name();
+        let _dialect = service.get_sql_dialect();
+
+        // 创建测试 DbRow
+        let row = DbRow {
+            columns: vec!["test".to_string()],
+            values: vec![Value::String("mysql_data".to_string())],
+        };
+
+        // 测试 convert_row_to_json
+        let result = service.convert_row_to_json(&row, &row.columns);
+        assert!(result.is_ok());
+        assert_eq!(result.unwrap().get("test"), Some(&Value::String("mysql_data".to_string())));
+    }
+
+    #[test]
+    fn test_row_conversion_with_enum_type() {
+        let service = MySqlService::new();
+
+        // 模拟 MySQL ENUM 类型（作为字符串存储）
+        let row = DbRow {
+            columns: vec![
+                "status_enum".to_string(),
+                "priority_enum".to_string(),
+            ],
+            values: vec![
+                Value::String("active".to_string()),
+                Value::String("high".to_string()),
+            ],
+        };
+
+        let result = service.convert_row_to_json(&row, &row.columns);
+        assert!(result.is_ok());
+        let json_map = result.unwrap();
+
+        assert_eq!(json_map.get("status_enum"), Some(&Value::String("active".to_string())));
+        assert_eq!(json_map.get("priority_enum"), Some(&Value::String("high".to_string())));
+    }
+
+    #[test]
+    fn test_row_conversion_with_set_type() {
+        let service = MySqlService::new();
+
+        // 模拟 MySQL SET 类型（作为逗号分隔的字符串）
+        let row = DbRow {
+            columns: vec![
+                "tags_set".to_string(),
+                "empty_set".to_string(),
+            ],
+            values: vec![
+                Value::String("read,write,execute".to_string()),
+                Value::String("".to_string()),
+            ],
+        };
+
+        let result = service.convert_row_to_json(&row, &row.columns);
+        assert!(result.is_ok());
+        let json_map = result.unwrap();
+
+        assert_eq!(json_map.get("tags_set"), Some(&Value::String("read,write,execute".to_string())));
+        assert_eq!(json_map.get("empty_set"), Some(&Value::String("".to_string())));
     }
 }

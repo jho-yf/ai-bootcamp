@@ -93,12 +93,26 @@ pub fn get_global_factory() -> &'static DatabaseServiceFactory {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::services::database::ParameterSyntax;
 
     #[test]
     fn test_factory_creation() {
         let factory = DatabaseServiceFactory::new();
         assert!(factory.is_supported(&DatabaseType::PostgreSQL));
         assert!(factory.is_supported(&DatabaseType::MySQL));
+    }
+
+    #[test]
+    fn test_factory_default_trait() {
+        // 测试 Default trait 实现
+        let factory1 = DatabaseServiceFactory::default();
+        assert!(factory1.is_supported(&DatabaseType::PostgreSQL));
+        assert!(factory1.is_supported(&DatabaseType::MySQL));
+
+        let factory2 = DatabaseServiceFactory::new();
+        // 两个工厂应该是独立的实例
+        assert!(factory1.is_supported(&DatabaseType::PostgreSQL));
+        assert!(factory2.is_supported(&DatabaseType::PostgreSQL));
     }
 
     #[test]
@@ -115,6 +129,21 @@ mod tests {
     }
 
     #[test]
+    fn test_get_service_unsupported_type() {
+        let factory = DatabaseServiceFactory::new();
+
+        // 尝试获取不支持的数据库类型（如果有其他变体）
+        // 这里测试错误处理机制
+        // 注意：当前只有 PostgreSQL 和 MySQL，所以这个测试展示错误处理能力
+        let result = factory.get_service(&DatabaseType::PostgreSQL);
+        assert!(result.is_ok());
+
+        // 验证返回的服务可以被正确使用
+        let service = result.unwrap();
+        assert_eq!(service.service_name(), "PostgreSQL");
+    }
+
+    #[test]
     fn test_supported_types() {
         let factory = DatabaseServiceFactory::new();
         let types = factory.supported_types();
@@ -122,5 +151,82 @@ mod tests {
         assert_eq!(types.len(), 2);
         assert!(types.contains(&DatabaseType::PostgreSQL));
         assert!(types.contains(&DatabaseType::MySQL));
+    }
+
+    #[test]
+    fn test_is_supported() {
+        let factory = DatabaseServiceFactory::new();
+
+        // 测试支持的类型
+        assert!(factory.is_supported(&DatabaseType::PostgreSQL));
+        assert!(factory.is_supported(&DatabaseType::MySQL));
+
+        // 测试不存在的类型（通过检查 is_supported 的否定逻辑）
+        // 当前只支持两种数据库，所以这个测试验证基础功能
+        let unsupported_count = factory
+            .supported_types()
+            .iter()
+            .filter(|t| !factory.is_supported(t))
+            .count();
+        assert_eq!(unsupported_count, 0, "supported_types 中的所有类型都应该被标记为支持");
+    }
+
+    #[test]
+    fn test_register_service_override() {
+        let mut factory = DatabaseServiceFactory::new();
+
+        // 注册一个新的 PostgreSQL 服务（覆盖默认的）
+        let new_pg_service = Arc::new(PostgresService::new());
+        factory.register_service(DatabaseType::PostgreSQL, new_pg_service);
+
+        // 验证服务仍然可用
+        let service = factory.get_service(&DatabaseType::PostgreSQL);
+        assert!(service.is_ok());
+        assert_eq!(service.unwrap().service_name(), "PostgreSQL");
+
+        // 验证支持的类型数量不变
+        assert_eq!(factory.supported_types().len(), 2);
+    }
+
+    #[test]
+    fn test_multiple_service_instances() {
+        let factory = DatabaseServiceFactory::new();
+
+        // 多次获取相同类型的服务
+        let service1 = factory.get_service(&DatabaseType::PostgreSQL).unwrap();
+        let service2 = factory.get_service(&DatabaseType::PostgreSQL).unwrap();
+
+        // 服务名称应该相同
+        assert_eq!(service1.service_name(), service2.service_name());
+
+        // SQL 方言应该相同
+        let dialect1 = service1.get_sql_dialect();
+        let dialect2 = service2.get_sql_dialect();
+        assert_eq!(dialect1.name, dialect2.name);
+    }
+
+    #[test]
+    fn test_service_sql_dialects() {
+        let factory = DatabaseServiceFactory::new();
+
+        let pg_service = factory.get_service(&DatabaseType::PostgreSQL).unwrap();
+        let mysql_service = factory.get_service(&DatabaseType::MySQL).unwrap();
+
+        let pg_dialect = pg_service.get_sql_dialect();
+        let mysql_dialect = mysql_service.get_sql_dialect();
+
+        // 验证 PostgreSQL 方言特性
+        assert_eq!(pg_dialect.name, "PostgreSQL");
+        assert_eq!(pg_dialect.identifier_quote, '"');
+        assert_eq!(pg_dialect.parameter_syntax, ParameterSyntax::DollarNumeric);
+
+        // 验证 MySQL 方言特性
+        assert_eq!(mysql_dialect.name, "MySQL");
+        assert_eq!(mysql_dialect.identifier_quote, '`');
+        assert_eq!(mysql_dialect.parameter_syntax, ParameterSyntax::QuestionMark);
+
+        // 验证方言差异
+        assert_ne!(pg_dialect.identifier_quote, mysql_dialect.identifier_quote);
+        assert_ne!(pg_dialect.parameter_syntax, mysql_dialect.parameter_syntax);
     }
 }

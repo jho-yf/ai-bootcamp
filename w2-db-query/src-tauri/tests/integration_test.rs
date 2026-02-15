@@ -19,7 +19,13 @@ use std::env;
 /// ```
 ///
 /// 注意：这些测试会执行真实的数据库操作
-use w2_db_query_lib::services::postgres_service;
+use w2_db_query_lib::services::database;
+use w2_db_query_lib::models::database::DatabaseType;
+
+/// 初始化工厂（在每个测试前调用）
+fn init_factory() {
+    database::init_global_factory();
+}
 
 /// 从环境变量获取测试数据库配置
 fn get_test_db_config() -> Option<(String, u16, String, String, String)> {
@@ -34,110 +40,150 @@ fn get_test_db_config() -> Option<(String, u16, String, String, String)> {
 
 #[tokio::test]
 async fn test_connect() {
+    init_factory();
+
     let Some((host, port, database_name, user, password)) = get_test_db_config() else {
         println!("跳过测试：未设置 TEST_DB_* 环境变量");
         println!("设置环境变量或使用 --features testcontainers 运行测试");
         return;
     };
 
-    let result = postgres_service::connect(&host, port, &database_name, &user, &password).await;
+    // 使用工厂模式获取服务
+    let factory = database::get_global_factory();
+    let service = factory.get_service(&DatabaseType::PostgreSQL).unwrap();
+
+    let result = service.connect(&host, port, &database_name, &user, &password).await;
     assert!(result.is_ok(), "应该能够连接到 PostgreSQL 数据库");
+
+    // 验证连接类型
+    let connection = result.unwrap();
+    match connection {
+        database::DbConnection::PostgreSQL(_) => {},
+        _ => panic!("应该返回 PostgreSQL 连接"),
+    }
 }
 
 #[tokio::test]
 async fn test_test_connection() {
+    init_factory();
+
     let Some((host, port, database_name, user, password)) = get_test_db_config() else {
         println!("跳过测试：未设置 TEST_DB_* 环境变量");
         return;
     };
 
-    let result =
-        postgres_service::test_connection(&host, port, &database_name, &user, &password).await;
+    let factory = database::get_global_factory();
+    let service = factory.get_service(&DatabaseType::PostgreSQL).unwrap();
+
+    let result = service.test_connection(&host, port, &database_name, &user, &password).await;
     assert!(result.is_ok(), "连接测试应该成功");
     assert_eq!(result.unwrap(), true);
 }
 
 #[tokio::test]
 async fn test_execute_query() {
+    init_factory();
+
     let Some((host, port, database_name, user, password)) = get_test_db_config() else {
         println!("跳过测试：未设置 TEST_DB_* 环境变量");
         return;
     };
 
-    let client = postgres_service::connect(&host, port, &database_name, &user, &password)
+    let factory = database::get_global_factory();
+    let service = factory.get_service(&DatabaseType::PostgreSQL).unwrap();
+
+    let connection = service.connect(&host, port, &database_name, &user, &password)
         .await
         .expect("应该能够连接到数据库");
 
     // 创建测试表
-    client
-        .execute(
-            "CREATE TABLE IF NOT EXISTS test_table (id SERIAL PRIMARY KEY, name TEXT)",
-            &[],
-        )
-        .await
-        .expect("应该能够创建表");
+    match &connection {
+        database::DbConnection::PostgreSQL(client) => {
+            client
+                .execute(
+                    "CREATE TABLE IF NOT EXISTS test_table (id SERIAL PRIMARY KEY, name TEXT)",
+                    &[],
+                )
+                .await
+                .expect("应该能够创建表");
 
-    // 清理旧数据
-    client.execute("DELETE FROM test_table", &[]).await.ok();
+            // 清理旧数据
+            client.execute("DELETE FROM test_table", &[]).await.ok();
 
-    // 插入测试数据
-    client
-        .execute(
-            "INSERT INTO test_table (name) VALUES ($1), ($2)",
-            &[&"Alice", &"Bob"],
-        )
-        .await
-        .expect("应该能够插入数据");
+            // 插入测试数据
+            client
+                .execute(
+                    "INSERT INTO test_table (name) VALUES ($1), ($2)",
+                    &[&"Alice", &"Bob"],
+                )
+                .await
+                .expect("应该能够插入数据");
+        }
+        _ => panic!("应该返回 PostgreSQL 连接"),
+    }
 
     // 执行查询
-    let (columns, rows, exec_time_ms) =
-        postgres_service::execute_query(&client, "SELECT id, name FROM test_table ORDER BY id")
-            .await
-            .expect("应该能够执行查询");
+    let exec_result = service.execute_query(&connection, "SELECT id, name FROM test_table ORDER BY id", &[])
+        .await
+        .expect("应该能够执行查询");
 
     // 验证结果
-    assert_eq!(columns, vec!["id", "name"]);
-    assert_eq!(rows.len(), 2);
-    assert!(exec_time_ms > 0);
+    assert_eq!(exec_result.rows.len(), 2);
+    assert!(exec_result.exec_time_ms > 0);
+
+    // 验证列名
+    let first_row = &exec_result.rows[0];
+    assert_eq!(first_row.columns, vec!["id", "name"]);
 
     // 验证数据
-    let id1: i32 = rows[0].get(0);
-    let name1: String = rows[0].get(1);
-    assert_eq!(id1, 1);
-    assert_eq!(name1, "Alice");
+    let id1 = &exec_result.rows[0].values[0];
+    let name1 = &exec_result.rows[0].values[1];
+    assert_eq!(id1, &serde_json::Value::Number(1.into()));
+    assert_eq!(name1, &serde_json::Value::String("Alice".to_string()));
 
-    let id2: i32 = rows[1].get(0);
-    let name2: String = rows[1].get(1);
-    assert_eq!(id2, 2);
-    assert_eq!(name2, "Bob");
+    let id2 = &exec_result.rows[1].values[0];
+    let name2 = &exec_result.rows[1].values[1];
+    assert_eq!(id2, &serde_json::Value::Number(2.into()));
+    assert_eq!(name2, &serde_json::Value::String("Bob".to_string()));
 }
 
 #[tokio::test]
 async fn test_execute_query_empty_result() {
+    init_factory();
+
     let Some((host, port, database_name, user, password)) = get_test_db_config() else {
         println!("跳过测试：未设置 TEST_DB_* 环境变量");
         return;
     };
 
-    let client = postgres_service::connect(&host, port, &database_name, &user, &password)
+    let factory = database::get_global_factory();
+    let service = factory.get_service(&DatabaseType::PostgreSQL).unwrap();
+
+    let connection = service.connect(&host, port, &database_name, &user, &password)
         .await
         .expect("应该能够连接到数据库");
 
-    let (_columns, rows, _exec_time_ms) = postgres_service::execute_query(
-        &client,
+    let exec_result = service.execute_query(
+        &connection,
         "SELECT * FROM information_schema.tables WHERE table_name = 'non_existent_table'",
+        &[],
     )
     .await
     .expect("应该能够执行查询");
 
     // 空结果也应该正常返回
-    assert_eq!(rows.len(), 0);
+    assert_eq!(exec_result.rows.len(), 0);
 }
 
 #[tokio::test]
 async fn test_connection_failure() {
+    init_factory();
+
     // 测试连接失败的情况（使用不存在的端口）
-    let result = postgres_service::connect("localhost", 9999, "nonexistent", "user", "pass").await;
+    let factory = database::get_global_factory();
+    let service = factory.get_service(&DatabaseType::PostgreSQL).unwrap();
+
+    let result = service.connect("localhost", 9999, "nonexistent", "user", "pass").await;
     assert!(result.is_err(), "连接不存在的数据库应该失败");
 }
 

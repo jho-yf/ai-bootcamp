@@ -424,21 +424,320 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_service_name() {
+    fn test_service_properties() {
         let service = PostgresService::new();
+
+        // 验证服务名称
         assert_eq!(service.service_name(), "PostgreSQL");
-    }
 
-    #[test]
-    fn test_sql_dialect() {
-        let service = PostgresService::new();
+        // 验证 SQL 方言配置
         let dialect = service.get_sql_dialect();
-
         assert_eq!(dialect.name, "PostgreSQL");
         assert_eq!(dialect.string_quote, '\'');
         assert_eq!(dialect.identifier_quote, '"');
-        assert_eq!(dialect.supports_limit, true);
+        assert!(dialect.supports_limit);
         assert_eq!(dialect.limit_syntax, LimitSyntax::Clause);
         assert_eq!(dialect.parameter_syntax, ParameterSyntax::DollarNumeric);
+
+        // 验证排除的模式列表
+        assert!(dialect.exclude_schemas.contains(&"information_schema"));
+        assert!(dialect.exclude_schemas.contains(&"pg_catalog"));
+        assert!(dialect.exclude_schemas.contains(&"pg_toast"));
+    }
+
+    #[test]
+    fn test_service_creation() {
+        // 测试服务创建
+        let service1 = PostgresService::new();
+        let service2 = PostgresService::new();
+
+        // 验证服务属性
+        assert_eq!(service1.service_name(), service2.service_name());
+
+        // 验证方言一致性
+        let dialect1 = service1.get_sql_dialect();
+        let dialect2 = service2.get_sql_dialect();
+        assert_eq!(dialect1.name, dialect2.name);
+    }
+
+    #[test]
+    fn test_row_conversion() {
+        let service = PostgresService::new();
+
+        // 测试空行转换
+        let row = DbRow {
+            columns: vec![],
+            values: vec![],
+        };
+
+        let result = service.convert_row_to_json(&row, &[]);
+        assert!(result.is_ok());
+        let json_map = result.unwrap();
+        assert_eq!(json_map.len(), 0);
+
+        // 测试有数据的行转换
+        let row = DbRow {
+            columns: vec!["id".to_string(), "name".to_string()],
+            values: vec![
+                Value::Number(serde_json::Number::from(42)),
+                Value::String("test".to_string())
+            ],
+        };
+
+        let result = service.convert_row_to_json(&row, &row.columns);
+        assert!(result.is_ok());
+        let json_map = result.unwrap();
+        assert_eq!(json_map.len(), 2);
+        assert_eq!(json_map.get("id"), Some(&Value::Number(serde_json::Number::from(42))));
+        assert_eq!(json_map.get("name"), Some(&Value::String("test".to_string())));
+    }
+
+    #[test]
+    fn test_row_conversion_with_nulls() {
+        let service = PostgresService::new();
+
+        // 测试包含 NULL 值的行转换
+        let row = DbRow {
+            columns: vec!["id".to_string(), "name".to_string(), "email".to_string()],
+            values: vec![
+                Value::Number(serde_json::Number::from(1)),
+                Value::Null,
+                Value::String("test@example.com".to_string()),
+            ],
+        };
+
+        let result = service.convert_row_to_json(&row, &row.columns);
+        assert!(result.is_ok());
+        let json_map = result.unwrap();
+
+        assert_eq!(json_map.get("id"), Some(&Value::Number(serde_json::Number::from(1))));
+        assert_eq!(json_map.get("name"), Some(&Value::Null));
+        assert_eq!(json_map.get("email"), Some(&Value::String("test@example.com".to_string())));
+        assert_eq!(json_map.len(), 3);
+    }
+
+    #[test]
+    fn test_row_conversion_with_mixed_types() {
+        let service = PostgresService::new();
+
+        // 测试混合数据类型（模拟 PostgreSQL 的类型转换）
+        let row = DbRow {
+            columns: vec![
+                "int_col".to_string(),
+                "bigint_col".to_string(),
+                "text_col".to_string(),
+                "bool_col".to_string(),
+                "float_col".to_string(),
+                "null_col".to_string(),
+            ],
+            values: vec![
+                Value::Number(serde_json::Number::from(2147483647)),  // i32::MAX
+                Value::Number(serde_json::Number::from(9223372036854775807_i64)),  // i64::MAX
+                Value::String("PostgreSQL text".to_string()),
+                Value::Bool(true),
+                Value::Number(serde_json::Number::from_f64(3.14159265359).unwrap()),
+                Value::Null,
+            ],
+        };
+
+        let result = service.convert_row_to_json(&row, &row.columns);
+        assert!(result.is_ok());
+        let json_map = result.unwrap();
+
+        // 验证整数
+        assert_eq!(json_map.get("int_col"), Some(&Value::Number(serde_json::Number::from(2147483647))));
+        assert_eq!(json_map.get("bigint_col"), Some(&Value::Number(serde_json::Number::from(9223372036854775807_i64))));
+
+        // 验证文本
+        assert_eq!(json_map.get("text_col"), Some(&Value::String("PostgreSQL text".to_string())));
+
+        // 验证布尔值
+        assert_eq!(json_map.get("bool_col"), Some(&Value::Bool(true)));
+
+        // 验证浮点数
+        assert_eq!(json_map.get("float_col"), Some(&Value::Number(serde_json::Number::from_f64(3.14159265359).unwrap())));
+
+        // 验证 NULL
+        assert_eq!(json_map.get("null_col"), Some(&Value::Null));
+
+        assert_eq!(json_map.len(), 6);
+    }
+
+    #[test]
+    fn test_row_conversion_with_boolean_values() {
+        let service = PostgresService::new();
+
+        // 测试 true 和 false
+        let row_true = DbRow {
+            columns: vec!["active".to_string()],
+            values: vec![Value::Bool(true)],
+        };
+
+        let result_true = service.convert_row_to_json(&row_true, &row_true.columns);
+        assert!(result_true.is_ok());
+        assert_eq!(result_true.unwrap().get("active"), Some(&Value::Bool(true)));
+
+        // 测试 false
+        let row_false = DbRow {
+            columns: vec!["active".to_string()],
+            values: vec![Value::Bool(false)],
+        };
+
+        let result_false = service.convert_row_to_json(&row_false, &row_false.columns);
+        assert!(result_false.is_ok());
+        assert_eq!(result_false.unwrap().get("active"), Some(&Value::Bool(false)));
+    }
+
+    #[test]
+    fn test_row_conversion_with_numeric_precision() {
+        let service = PostgresService::new();
+
+        // 测试各种数值精度
+        let row = DbRow {
+            columns: vec![
+                "tiny_int".to_string(),
+                "small_int".to_string(),
+                "normal_int".to_string(),
+                "negative_int".to_string(),
+                "zero".to_string(),
+            ],
+            values: vec![
+                Value::Number(serde_json::Number::from(1)),
+                Value::Number(serde_json::Number::from(1000)),
+                Value::Number(serde_json::Number::from(1000000)),
+                Value::Number(serde_json::Number::from(-999999)),
+                Value::Number(serde_json::Number::from(0)),
+            ],
+        };
+
+        let result = service.convert_row_to_json(&row, &row.columns);
+        assert!(result.is_ok());
+        let json_map = result.unwrap();
+
+        assert_eq!(json_map.get("tiny_int"), Some(&Value::Number(serde_json::Number::from(1))));
+        assert_eq!(json_map.get("small_int"), Some(&Value::Number(serde_json::Number::from(1000))));
+        assert_eq!(json_map.get("normal_int"), Some(&Value::Number(serde_json::Number::from(1000000))));
+        assert_eq!(json_map.get("negative_int"), Some(&Value::Number(serde_json::Number::from(-999999))));
+        assert_eq!(json_map.get("zero"), Some(&Value::Number(serde_json::Number::from(0))));
+    }
+
+    #[test]
+    fn test_row_conversion_with_special_characters() {
+        let service = PostgresService::new();
+
+        // 测试包含特殊字符的字符串
+        let row = DbRow {
+            columns: vec![
+                "unicode".to_string(),
+                "newlines".to_string(),
+                "quotes".to_string(),
+                "empty".to_string(),
+            ],
+            values: vec![
+                Value::String("中文日本語한국어".to_string()),
+                Value::String("line1\nline2\rline3".to_string()),
+                Value::String("contains \"double\" and 'single' quotes".to_string()),
+                Value::String("".to_string()),
+            ],
+        };
+
+        let result = service.convert_row_to_json(&row, &row.columns);
+        assert!(result.is_ok());
+        let json_map = result.unwrap();
+
+        assert_eq!(json_map.get("unicode"), Some(&Value::String("中文日本語한국어".to_string())));
+        assert_eq!(json_map.get("newlines"), Some(&Value::String("line1\nline2\rline3".to_string())));
+        assert_eq!(json_map.get("quotes"), Some(&Value::String("contains \"double\" and 'single' quotes".to_string())));
+        assert_eq!(json_map.get("empty"), Some(&Value::String("".to_string())));
+    }
+
+    #[test]
+    fn test_sql_dialect_postgresql_features() {
+        let service = PostgresService::new();
+        let dialect = service.get_sql_dialect();
+
+        // 验证 PostgreSQL 特定的 SQL 特性
+        assert_eq!(dialect.name, "PostgreSQL");
+        assert_eq!(dialect.identifier_quote, '"', "PostgreSQL 使用双引号作为标识符引用");
+        assert_eq!(dialect.string_quote, '\'', "PostgreSQL 使用单引号作为字符串引用");
+        assert_eq!(dialect.parameter_syntax, ParameterSyntax::DollarNumeric, "PostgreSQL 使用 $1, $2 参数语法");
+        assert_eq!(dialect.limit_syntax, LimitSyntax::Clause, "PostgreSQL 支持 LIMIT ... OFFSET");
+        assert!(dialect.supports_limit, "PostgreSQL 支持 LIMIT 子句");
+
+        // 验证排除的系统模式
+        assert!(dialect.exclude_schemas.contains(&"information_schema"));
+        assert!(dialect.exclude_schemas.contains(&"pg_catalog"));
+        assert!(dialect.exclude_schemas.contains(&"pg_toast"));
+        assert_eq!(dialect.exclude_schemas.len(), 3);
+    }
+
+    #[test]
+    fn test_row_conversion_empty_vs_null() {
+        let service = PostgresService::new();
+
+        // 测试空字符串 vs NULL
+        let row = DbRow {
+            columns: vec!["empty_str".to_string(), "null_val".to_string()],
+            values: vec![
+                Value::String("".to_string()),  // 空字符串
+                Value::Null,  // NULL
+            ],
+        };
+
+        let result = service.convert_row_to_json(&row, &row.columns);
+        assert!(result.is_ok());
+        let json_map = result.unwrap();
+
+        // 空字符串和 NULL 应该是不同的
+        assert_eq!(json_map.get("empty_str"), Some(&Value::String("".to_string())));
+        assert_eq!(json_map.get("null_val"), Some(&Value::Null));
+        assert_ne!(json_map.get("empty_str"), json_map.get("null_val"));
+    }
+
+    #[test]
+    fn test_row_conversion_large_dataset() {
+        let service = PostgresService::new();
+
+        // 测试多列数据集
+        let columns: Vec<String> = (0..10).map(|i| format!("col_{}", i)).collect();
+        let values: Vec<Value> = (0..10)
+            .map(|i| match i % 4 {
+                0 => Value::Number(serde_json::Number::from(i)),
+                1 => Value::String(format!("value_{}", i)),
+                2 => Value::Bool(i % 2 == 0),
+                _ => Value::Null,
+            })
+            .collect();
+
+        let row = DbRow { columns: columns.clone(), values };
+        let result = service.convert_row_to_json(&row, &columns);
+
+        assert!(result.is_ok());
+        let json_map = result.unwrap();
+        assert_eq!(json_map.len(), 10);
+
+        // 验证部分数据
+        assert_eq!(json_map.get("col_0"), Some(&Value::Number(serde_json::Number::from(0))));
+        assert_eq!(json_map.get("col_1"), Some(&Value::String("value_1".to_string())));
+    }
+
+    #[test]
+    fn test_service_trait_compliance() {
+        let service = PostgresService::new();
+
+        // 测试所有必需的 trait 方法都可以被调用
+        let _name = service.service_name();
+        let _dialect = service.get_sql_dialect();
+
+        // 创建测试 DbRow
+        let row = DbRow {
+            columns: vec!["test".to_string()],
+            values: vec![Value::String("data".to_string())],
+        };
+
+        // 测试 convert_row_to_json
+        let result = service.convert_row_to_json(&row, &row.columns);
+        assert!(result.is_ok());
+        assert_eq!(result.unwrap().get("test"), Some(&Value::String("data".to_string())));
     }
 }
