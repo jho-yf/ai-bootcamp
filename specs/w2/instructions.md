@@ -4,8 +4,8 @@
 
 针对 `./w2-db-query` 项目的规范：
 
-- Rust 使用官方标准规范：The Standard Style
-- 前端使用 TypeScript
+- Java 使用官方标准规范：[Google Java Style Guide](https://github.com/google/styleguide)
+- 前端使用 TypeScript：[TypeScript Style Guide](https://www.typescriptlang.org/docs/handbook/typescript-style.html)
 - 前端后端都要有严格的类型标注。
 - 所有后端生成的 JSON 数据，使用 camelCase 格式。
 - 不需要 authentication，任何用户都可以使用。
