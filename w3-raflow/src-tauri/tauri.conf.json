@@ -1,0 +1,36 @@
+{
+  "$schema": "https://schema.tauri.app/config/2.0.0",
+  "productName": "RaFlow",
+  "version": "0.1.0",
+  "identifier": "com.ai-bootcamp.raflow",
+  "build": {
+    "beforeDevCommand": "npm run dev",
+    "beforeBuildCommand": "npm run build",
+    "devUrl": "http://localhost:1420",
+    "frontendDist": "../dist"
+  },
+  "app": {
+    "windows": [
+      {
+        "title": "RaFlow 语音输入",
+        "width": 800,
+        "height": 600,
+        "resizable": true,
+        "hiddenTitle": false,
+        "titleBarStyle": "Visible"
+      }
+    ],
+    "security": {
+      "csp": null
+    },
+    "withGlobalTauri": true
+  },
+  "bundle": {
+    "active": true,
+    "targets": "all",
+    "category": "Productivity",
+    "shortDescription": "Real-time voice input tool powered by ElevenLabs",
+    "longDescription": "RaFlow is a cross-platform voice input tool with low-latency speech-to-text powered by ElevenLabs Scribe v2."
+  },
+  "plugins": {}
+}
