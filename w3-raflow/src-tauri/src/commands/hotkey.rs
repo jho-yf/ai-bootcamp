@@ -64,7 +64,10 @@ pub async fn register_hotkey(
 
         // 直接调用 toggle_recording 命令，而不是通过事件传递
         let app_handle = app_clone.clone();
-        tokio::spawn(async move {
+        // 使用 tauri::async_runtime::spawn 而不是 tokio::spawn
+        tauri::async_runtime::spawn(async move {
+            tracing::info!("Async task started for toggle_recording");
+
             // 获取需要的状态
             let storage = app_handle.try_state::<std::sync::Arc<crate::config::ConfigStorage>>();
             let raflow_app = app_handle.try_state::<std::sync::Arc<crate::core::RaFlowApp>>();
@@ -74,6 +77,8 @@ pub async fn register_hotkey(
                     // 获取内部的 Arc
                     let storage_arc = storage.inner().clone();
                     let raflow_app_arc = raflow_app.inner().clone();
+
+                    tracing::info!("Got state, calling toggle_recording_impl");
 
                     // 调用 toggle_recording
                     match crate::commands::toggle_recording_impl(app_handle.clone(), raflow_app_arc, storage_arc).await {
