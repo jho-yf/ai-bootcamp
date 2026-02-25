@@ -59,7 +59,7 @@ async fn main() {
             Ok(())
         })
         .manage(Arc::new(storage))
-        .manage(Arc::new(app.audio_service().clone()))
+        .manage(app.audio_service().clone())
         .invoke_handler(tauri::generate_handler![
             // 配置命令
             raflow_lib::commands::get_config,
