@@ -12,3 +12,4 @@ mod state_test;
 
 pub use error::{AppError, Result, AudioError, NetworkError, ConfigError, InputError};
 pub use state::{AppState, RecordingState, ConnectionState};
+pub use app::RaFlowApp;

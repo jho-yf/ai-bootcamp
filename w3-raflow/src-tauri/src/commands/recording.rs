@@ -5,7 +5,7 @@
 use tauri::{AppHandle, Emitter, State};
 use std::sync::Arc;
 
-use crate::audio::AudioService;
+use crate::core::RaFlowApp;
 use crate::config::ConfigStorage;
 
 /// 热键触发的录音切换
@@ -14,31 +14,35 @@ use crate::config::ConfigStorage;
 #[tauri::command]
 pub async fn toggle_recording(
     app: AppHandle,
-    service: State<'_, Arc<AudioService>>,
+    raflow_app: State<'_, Arc<RaFlowApp>>,
     storage: State<'_, Arc<ConfigStorage>>,
 ) -> Result<(), String> {
     tracing::info!("=== toggle_recording called ===");
 
-    // 1. 检查当前录音状态
-    let is_recording = service.is_recording().await;
+    // 1. 加载配置
+    let config = storage.load()
+        .map_err(|e| format!("加载配置失败: {}", e))?;
+
+    // 2. 检查当前录音状态
+    let is_recording = raflow_app.state().lock().await.recording_state == crate::core::RecordingState::Recording;
 
     if is_recording {
-        // 停止录音
-        tracing::info!("Stopping recording via hotkey");
-        service.stop_recording().await
-            .map_err(|e| e.to_string())?;
+        // 停止录音和转录
+        tracing::info!("Stopping recording transcription via hotkey");
+        let result = raflow_app.stop_recording_transcription().await
+            .map_err(|e| {
+                let error_msg = format!("停止录音失败: {}", e);
+                tracing::error!("Failed to stop recording: {}", e);
+                error_msg
+            })?;
 
         // 发送停止事件
-        app.emit("recording-stopped", None::<String>)
+        app.emit("recording-stopped", result)
             .map_err(|e| format!("Failed to emit event: {}", e))?;
 
         Ok(())
     } else {
         // 开始录音前进行验证
-
-        // 2. 加载配置
-        let config = storage.load()
-            .map_err(|e| format!("加载配置失败: {}", e))?;
 
         // 3. 验证 ElevenLabs API Key
         if config.elevenlabs.api_key.is_empty() || config.elevenlabs.api_key.len() < 10 {
@@ -50,7 +54,7 @@ pub async fn toggle_recording(
         }
 
         // 4. 验证音频设备
-        let devices = service.enumerate_devices().await
+        let devices = raflow_app.audio_service().enumerate_devices().await
             .map_err(|e| format!("获取音频设备失败: {}", e))?;
 
         if devices.is_empty() {
@@ -61,18 +65,13 @@ pub async fn toggle_recording(
             return Err(error_msg.to_string());
         }
 
-        tracing::info!("Pre-checks passed, starting recording");
+        tracing::info!("Pre-checks passed, starting recording transcription");
 
-        // 5. 发送开始录音事件（前端会处理实际的转录逻辑）
-        app.emit("recording-start-requested", ())
-            .map_err(|e| format!("Failed to emit event: {}", e))?;
-
-        // 直接启动音频录音
-        let device_id = config.audio.device_id.clone();
-        service.start_recording(if device_id.is_empty() { None } else { Some(device_id) }).await
+        // 5. 启动完整的录音转录流程
+        raflow_app.start_recording_transcription().await
             .map_err(|e| {
                 let error_msg = format!("启动录音失败: {}", e);
-                tracing::error!("Failed to start recording: {}", e);
+                tracing::error!("Failed to start recording transcription: {}", e);
                 app.emit("show-error", error_msg.clone()).ok();
                 error_msg
             })?;
@@ -81,7 +80,7 @@ pub async fn toggle_recording(
         app.emit("recording-started", ())
             .map_err(|e| format!("Failed to emit event: {}", e))?;
 
-        tracing::info!("Recording started successfully");
+        tracing::info!("Recording transcription started successfully");
         Ok(())
     }
 }
@@ -92,7 +91,7 @@ pub async fn toggle_recording(
 #[tauri::command]
 pub async fn check_recording_availability(
     storage: State<'_, Arc<ConfigStorage>>,
-    service: State<'_, Arc<AudioService>>,
+    raflow_app: State<'_, Arc<RaFlowApp>>,
 ) -> Result<RecordingAvailability, String> {
     let mut availability = RecordingAvailability {
         available: true,
@@ -109,7 +108,7 @@ pub async fn check_recording_availability(
     }
 
     // 检查音频设备
-    let devices = service.enumerate_devices().await
+    let devices = raflow_app.audio_service().enumerate_devices().await
         .map_err(|e| format!("获取音频设备失败: {}", e))?;
 
     if devices.is_empty() {
