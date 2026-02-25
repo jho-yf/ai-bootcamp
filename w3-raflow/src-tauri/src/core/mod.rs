@@ -10,5 +10,5 @@ mod error_test;
 #[cfg(test)]
 mod state_test;
 
-pub use error::{AppError, Result};
+pub use error::{AppError, Result, AudioError, NetworkError, ConfigError, InputError};
 pub use state::{AppState, RecordingState, ConnectionState};

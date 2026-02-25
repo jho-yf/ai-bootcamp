@@ -76,6 +76,9 @@ async fn main() {
             raflow_lib::commands::register_hotkey,
             raflow_lib::commands::unregister_hotkey,
             raflow_lib::commands::test_hotkey,
+            // 更新命令
+            raflow_lib::updater::check_for_updates,
+            raflow_lib::updater::get_update_status,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

@@ -30,9 +30,11 @@ thiserror = { workspace = true }
 anyhow = { workspace = true }
 tracing = { workspace = true }
 tracing-subscriber = { workspace = true }
+reqwest = { workspace = true }
 
 [dev-dependencies]
 tempfile = "3.15"
+base64 = "0.22"
 
 [features]
 default = ["custom-protocol"]

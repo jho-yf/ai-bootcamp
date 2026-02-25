@@ -4,6 +4,24 @@ import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import type { AppConfig, AudioDevice, TranscriptionResult } from "./types";
 
+/** 更新状态类型 */
+export type UpdateStatus =
+  | { type: "Checking" }
+  | { type: "Available"; version: string; notes: string }
+  | { type: "Downloading"; progress: number }
+  | { type: "ReadyToInstall" }
+  | { type: "UpToDate" }
+  | { type: "Error"; message: string };
+
+/** 更新信息类型 */
+export interface UpdateInfo {
+  version: string;
+  notes: string;
+  pub_date: string;
+  download_url: string;
+  signature_url?: string;
+}
+
 /** 音频相关 API */
 export const audioApi = {
   /** 获取音频设备列表 */
@@ -83,4 +101,22 @@ export const hotkeyApi = {
   /** 测试热键 */
   testHotkey: () =>
     invoke<boolean>("test_hotkey"),
+};
+
+/** 更新相关 API */
+export const updaterApi = {
+  /** 检查更新 */
+  checkForUpdates: (updateUrl: string) =>
+    invoke<UpdateInfo>("check_for_updates", { updateUrl }),
+
+  /** 获取更新状态 */
+  getUpdateStatus: () =>
+    invoke<UpdateStatus>("get_update_status"),
+};
+
+/** 更新事件监听 */
+export const updateEvents = {
+  /** 监听更新状态变化 */
+  onUpdateStatusChanged: (callback: (status: UpdateStatus) => void) =>
+    listen("update-status", (event) => callback(event.payload as UpdateStatus)),
 };
