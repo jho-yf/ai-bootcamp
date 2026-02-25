@@ -133,7 +133,7 @@ impl Default for HotkeyConfig {
     fn default() -> Self {
         Self {
             modifiers: vec![KeyModifier::Ctrl, KeyModifier::Shift],
-            key: KeyCode::Backslash,
+            key: KeyCode::Char('o'),
             enabled: true,
         }
     }

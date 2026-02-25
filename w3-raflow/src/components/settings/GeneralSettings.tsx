@@ -35,30 +35,30 @@ export function GeneralSettings() {
   };
 
   if (!config) {
-    return <div>加载中...</div>;
+    return <div className="text-gray-900">加载中...</div>;
   }
 
   return (
     <div className="space-y-4">
       {/* ElevenLabs API Key */}
       <div>
-        <label className="block text-sm font-medium mb-1">
+        <label className="block text-sm font-medium text-gray-900 mb-1">
           ElevenLabs API Key
         </label>
         <input
           type="password"
           value={config.elevenlabs.api_key || ""}
           onChange={(e) => updateConfig("elevenlabs.api_key", e.target.value)}
-          className="w-full px-3 py-2 border rounded dark:bg-gray-700 dark:border-gray-600"
+          className="w-full px-3 py-2 border rounded bg-white border-gray-300 text-gray-900"
           placeholder="xi-your-api-key"
         />
-        <p className="text-xs text-gray-500 mt-1">
+        <p className="text-xs text-gray-600 mt-1">
           从{" "}
           <a
             href="https://elevenlabs.io"
             target="_blank"
             rel="noopener noreferrer"
-            className="text-blue-500 hover:underline"
+            className="text-blue-600 hover:underline"
           >
             ElevenLabs
           </a>{" "}
@@ -68,11 +68,11 @@ export function GeneralSettings() {
 
       {/* Language Selection */}
       <div>
-        <label className="block text-sm font-medium mb-1">识别语言</label>
+        <label className="block text-sm font-medium text-gray-900 mb-1">识别语言</label>
         <select
           value={config.elevenlabs.language || "auto"}
           onChange={(e) => updateConfig("elevenlabs.language", e.target.value)}
-          className="w-full px-3 py-2 border rounded dark:bg-gray-700 dark:border-gray-600"
+          className="w-full px-3 py-2 border rounded bg-white border-gray-300 text-gray-900"
         >
           <option value="auto">自动检测</option>
           <option value="zh-CN">中文</option>
@@ -87,17 +87,17 @@ export function GeneralSettings() {
 
       {/* Text Insertion Strategy */}
       <div>
-        <label className="block text-sm font-medium mb-1">文本插入方式</label>
+        <label className="block text-sm font-medium text-gray-900 mb-1">文本插入方式</label>
         <select
           value={config.text.strategy || "auto"}
           onChange={(e) => updateConfig("text.strategy", e.target.value)}
-          className="w-full px-3 py-2 border rounded dark:bg-gray-700 dark:border-gray-600"
+          className="w-full px-3 py-2 border rounded bg-white border-gray-300 text-gray-900"
         >
           <option value="auto">自动选择</option>
           <option value="keyboard">仅键盘输入</option>
           <option value="clipboard">仅剪贴板</option>
         </select>
-        <p className="text-xs text-gray-500 mt-1">
+        <p className="text-xs text-gray-600 mt-1">
           自动模式：优先使用键盘输入，失败时切换到剪贴板
         </p>
       </div>
@@ -111,7 +111,7 @@ export function GeneralSettings() {
             onChange={(e) => updateConfig("ui.show_notifications", e.target.checked)}
             className="mr-2"
           />
-          <span className="text-sm">显示通知</span>
+          <span className="text-sm text-gray-900">显示通知</span>
         </label>
       </div>
 
@@ -124,7 +124,7 @@ export function GeneralSettings() {
             onChange={(e) => updateConfig("ui.show_live_preview", e.target.checked)}
             className="mr-2"
           />
-          <span className="text-sm">显示实时转录预览</span>
+          <span className="text-sm text-gray-900">显示实时转录预览</span>
         </label>
       </div>
 
@@ -132,7 +132,7 @@ export function GeneralSettings() {
       <button
         onClick={handleSave}
         disabled={isLoading}
-        className="w-full py-2 bg-blue-500 text-white rounded hover:bg-blue-600 disabled:opacity-50"
+        className="w-full py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed font-medium"
       >
         {isLoading ? "保存中..." : "保存设置"}
       </button>

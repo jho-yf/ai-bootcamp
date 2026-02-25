@@ -12,16 +12,19 @@
   "app": {
     "windows": [
       {
+        "label": "main",
         "title": "RaFlow 语音输入",
         "width": 800,
         "height": 600,
         "resizable": true,
         "hiddenTitle": false,
-        "titleBarStyle": "Visible"
+        "titleBarStyle": "Visible",
+        "fullscreen": false,
+        "focus": true
       }
     ],
     "security": {
-      "csp": null
+      "csp": "default-src 'self'; connect-src 'self' https://api.elevenlabs.io; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:"
     },
     "withGlobalTauri": true
   },
@@ -30,7 +33,57 @@
     "targets": "all",
     "category": "Productivity",
     "shortDescription": "Real-time voice input tool powered by ElevenLabs",
-    "longDescription": "RaFlow is a cross-platform voice input tool with low-latency speech-to-text powered by ElevenLabs Scribe v2."
+    "longDescription": "RaFlow is a cross-platform voice input tool with low-latency speech-to-text powered by ElevenLabs Scribe v2. Features global hotkey support, multi-language recognition, and intelligent text insertion.",
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.icns",
+      "icons/icon.ico"
+    ],
+    "publisher": "AI Bootcamp Team",
+    "copyright": "Copyright © 2026 AI Bootcamp Team",
+    "license": "MIT",
+    "macOS": {
+      "minimumSystemVersion": "10.15",
+      "entitlements": null,
+      "exceptionDomain": "",
+      "frameworks": [],
+      "providerShortName": null,
+      "signingIdentity": null,
+      "hardenedRuntime": true
+    },
+    "windows": {
+      "certificateThumbprint": null,
+      "digestAlgorithm": "sha256",
+      "timestampUrl": "http://timestamp.digicert.com",
+      "tsp": false,
+      "wix": {
+        "language": "zh-CN"
+      },
+      "webviewInstallMode": {
+        "type": "embedBootstrapper"
+      },
+      "nsis": {
+        "installMode": "perMachine",
+        "displayLanguageSelector": true,
+        "languages": ["SimpChinese", "English"]
+      }
+    },
+    "linux": {
+      "deb": {
+        "depends": []
+      },
+      "appimage": {
+        "bundleMediaFramework": false
+      }
+    },
+    "createUpdaterArtifacts": false
   },
-  "plugins": {}
+  "plugins": {
+    "shell": {
+      "open": true
+    },
+    "globalShortcut": {}
+  }
 }

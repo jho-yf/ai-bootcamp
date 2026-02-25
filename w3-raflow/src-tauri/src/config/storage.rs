@@ -38,6 +38,21 @@ impl ConfigStorage {
         Ok(Self { config_path })
     }
 
+    /// 使用指定路径创建配置存储实例（主要用于测试）
+    #[cfg(test)]
+    pub fn new_with_path(config_path: PathBuf) -> Result<Self> {
+        // 确保配置目录存在
+        if let Some(parent) = config_path.parent() {
+            std::fs::create_dir_all(parent).map_err(|e| {
+                AppError::Config(ConfigError::DirectoryInaccessible(
+                    format!("创建配置目录失败: {}", e)
+                ))
+            })?;
+        }
+
+        Ok(Self { config_path })
+    }
+
     /// 加载配置
     pub fn load(&self) -> Result<AppConfig> {
         if self.config_path.exists() {

@@ -4,6 +4,7 @@ export default {
     "./index.html",
     "./src/**/*.{js,ts,jsx,tsx}",
   ],
+  darkMode: false,  // 禁用暗黑模式
   theme: {
     extend: {},
   },

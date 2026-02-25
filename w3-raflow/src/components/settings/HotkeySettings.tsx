@@ -61,11 +61,11 @@ export function HotkeySettings() {
 
   const resetHotkey = () => {
     updateConfig("hotkey.modifiers", ["ctrl", "shift"]);
-    updateConfig("hotkey.key", "backslash");
+    updateConfig("hotkey.key", "o");
     showNotification({
       type: "info",
       title: "快捷键已重置",
-      message: "已恢复为默认快捷键: Ctrl+Shift+\\",
+      message: "已恢复为默认快捷键: Ctrl+Shift+O",
     });
   };
 
@@ -93,26 +93,26 @@ export function HotkeySettings() {
   };
 
   if (!config) {
-    return <div>加载中...</div>;
+    return <div className="text-gray-900">加载中...</div>;
   }
 
   return (
     <div className="space-y-4">
       {/* Hotkey Display and Capture */}
       <div>
-        <label className="block text-sm font-medium mb-1">全局快捷键</label>
+        <label className="block text-sm font-medium text-gray-900 mb-1">全局快捷键</label>
         <button
           onClick={startCapture}
           disabled={!config.hotkey.enabled}
-          className={`w-full px-4 py-3 border-2 rounded text-center font-mono transition-colors ${
+          className={`w-full px-4 py-3 border-2 rounded text-center font-mono transition-colors font-medium ${
             capturing
-              ? "border-blue-500 bg-blue-50 dark:bg-blue-900/20"
-              : "border-gray-300 dark:border-gray-600 hover:border-gray-400"
+              ? "border-blue-500 bg-blue-50 text-blue-900"
+              : "border-gray-300 bg-white text-gray-900 hover:border-gray-400"
           } ${!config.hotkey.enabled ? "opacity-50 cursor-not-allowed" : ""}`}
         >
           {capturing ? currentHotkey : displayHotkey()}
         </button>
-        <p className="text-xs text-gray-500 mt-1">
+        <p className="text-xs text-gray-600 mt-1">
           点击上方按钮，然后按下您想设置的快捷键
         </p>
       </div>
@@ -120,7 +120,7 @@ export function HotkeySettings() {
       {/* Reset Button */}
       <button
         onClick={resetHotkey}
-        className="px-4 py-2 text-gray-600 dark:text-gray-400 border dark:border-gray-600 rounded hover:bg-gray-50 dark:hover:bg-gray-700 flex items-center"
+        className="px-4 py-2 text-gray-700 border border-gray-300 rounded hover:bg-gray-50 flex items-center font-medium"
       >
         <RotateCcw className="w-4 h-4 mr-2" />
         重置为默认快捷键
@@ -134,15 +134,15 @@ export function HotkeySettings() {
           onChange={(e) => updateConfig("hotkey.enabled", e.target.checked)}
           className="mr-2"
         />
-        <span className="text-sm">启用全局快捷键</span>
+        <span className="text-sm text-gray-900">启用全局快捷键</span>
       </label>
 
       {/* Instructions */}
-      <div className="pt-4 border-t dark:border-gray-700">
-        <h3 className="text-sm font-medium mb-2">使用说明</h3>
-        <ul className="text-xs text-gray-500 space-y-1">
+      <div className="pt-4 border-t border-gray-200">
+        <h3 className="text-sm font-medium text-gray-900 mb-2">使用说明</h3>
+        <ul className="text-xs text-gray-600 space-y-1">
           <li>• 按下快捷键开始/停止录音</li>
-          <li>• 默认快捷键: Ctrl+Shift+\</li>
+          <li>• 默认快捷键: Ctrl+Shift+O</li>
           <li>• 支持 Ctrl, Alt, Shift, Super (Win/Cmd) 修饰键</li>
           <li>• 确保快捷键不与其他应用冲突</li>
         </ul>

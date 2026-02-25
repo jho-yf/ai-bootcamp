@@ -23,9 +23,39 @@ async fn main() {
 
     // 运行 Tauri
     tauri::Builder::default()
-        .setup(|app| {
+        .plugin(tauri_plugin_global_shortcut::Builder::new().build())
+        .setup(move |app| {
             // 设置系统托盘
             raflow_lib::tray::setup_tray(app.handle())?;
+
+            // 注册默认热键
+            let hotkey_config = config.hotkey.clone();
+            let modifiers: Vec<String> = hotkey_config.modifiers
+                .iter()
+                .map(|m| match m {
+                    raflow_lib::config::KeyModifier::Ctrl => "ctrl".to_string(),
+                    raflow_lib::config::KeyModifier::Alt => "alt".to_string(),
+                    raflow_lib::config::KeyModifier::Shift => "shift".to_string(),
+                    raflow_lib::config::KeyModifier::Super => "super".to_string(),
+                })
+                .collect();
+            let key = match &hotkey_config.key {
+                raflow_lib::config::KeyCode::Char(c) => c.to_string(),
+                raflow_lib::config::KeyCode::Backslash => "\\".to_string(),
+                raflow_lib::config::KeyCode::Space => "Space".to_string(),
+            };
+
+            // 在新线程中注册热键
+            let app_handle = app.handle().clone();
+            std::thread::spawn(move || {
+                let rt = tokio::runtime::Runtime::new().unwrap();
+                rt.block_on(async {
+                    if let Err(e) = raflow_lib::commands::register_hotkey(app_handle, modifiers, key).await {
+                        tracing::error!("Failed to register default hotkey: {}", e);
+                    }
+                });
+            });
+
             Ok(())
         })
         .manage(Arc::new(storage))
@@ -42,6 +72,10 @@ async fn main() {
             raflow_lib::commands::stop_recording,
             raflow_lib::commands::test_microphone,
             raflow_lib::commands::get_recording_state,
+            // 热键命令
+            raflow_lib::commands::register_hotkey,
+            raflow_lib::commands::unregister_hotkey,
+            raflow_lib::commands::test_hotkey,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

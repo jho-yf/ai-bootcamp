@@ -2,6 +2,17 @@
 @tailwind components;
 @tailwind utilities;
 
+/* 强制使用浅色模式 */
+html, body {
+  color-scheme: light !important;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    color-scheme: light !important;
+  }
+}
+
 :root {
   font-family: Inter, system-ui, Avenir, Helvetica, Arial, sans-serif;
   line-height: 1.5;

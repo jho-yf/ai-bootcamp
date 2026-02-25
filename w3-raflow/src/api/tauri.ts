@@ -1,6 +1,7 @@
 // src/api/tauri.ts
 
-import { invoke, listen } from "@tauri-apps/api/event";
+import { invoke } from "@tauri-apps/api/core";
+import { listen } from "@tauri-apps/api/event";
 import type { AppConfig, AudioDevice, TranscriptionResult } from "./types";
 
 /** 音频相关 API */

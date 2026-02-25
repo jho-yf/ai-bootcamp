@@ -6,7 +6,7 @@ use serde::{Deserialize, Serialize};
 use crate::config::ElevenLabsConfig;
 
 /// 客户端消息类型
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(tag = "type")]
 pub enum ClientMessage {
     /// 初始化配置
@@ -35,7 +35,7 @@ pub enum ClientMessage {
 }
 
 /// 服务器消息类型
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(tag = "type")]
 pub enum ServerMessage {
     /// 识别结果

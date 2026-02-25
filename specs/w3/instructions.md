@@ -40,6 +40,8 @@
 
 根据 `@specs/w3/002-raflow-design.md` 和 `@specs/w3/003-raflow-implementation-plan.md` 文件的设计和 Plan ，完整实现 Phase 3
 
+根据 `@specs/w3/002-raflow-design.md` 和 `@specs/w3/003-raflow-implementation-plan.md` 文件的设计和 Plan ，完整实现 Phase 4
+
 ## 生成更新的 design docs
 
 仔细阅读 `@w3-raflow` 的代码，think ultra hard,构建一个更新的 design docs，放在 `@specs/w3/004-raflow-design-v2.md` 文件中，输出为中文，使用 mermaid 绘制架构，设计，组件，流程图等图标并详细说明。

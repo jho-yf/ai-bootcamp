@@ -25,7 +25,7 @@ export function StatusIndicator() {
   };
 
   return (
-    <div className="fixed top-20 left-1/2 -translate-x-1/2 bg-black/80 dark:bg-black/90 backdrop-blur text-white px-6 py-3 rounded-full shadow-2xl flex items-center space-x-4 z-50 animate-in fade-in slide-in-from-top-4 duration-300">
+    <div className="fixed top-20 left-1/2 -translate-x-1/2 bg-black/80 backdrop-blur text-white px-6 py-3 rounded-full shadow-2xl flex items-center space-x-4 z-50 animate-in fade-in slide-in-from-top-4 duration-300">
       {/* Recording Icon Animation */}
       <div className="relative">
         <Mic className="w-5 h-5 text-red-500" />
