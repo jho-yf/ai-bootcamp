@@ -22,11 +22,20 @@ export function AudioSettings() {
     try {
       const devs = await audioApi.getDevices();
       setDevices(devs);
+
+      // 如果没有设备，显示警告
+      if (devs.length === 0) {
+        showNotification({
+          type: "warning",
+          title: "未找到设备",
+          message: "未检测到可用的音频输入设备，请检查麦克风是否已连接",
+        });
+      }
     } catch (e) {
       showNotification({
         type: "error",
         title: "加载失败",
-        message: "无法加载音频设备",
+        message: typeof e === "string" ? e : "无法加载音频设备，请确保应用有访问麦克风的权限",
       });
     }
   };
@@ -108,15 +117,27 @@ export function AudioSettings() {
         <select
           value={config.audio.device_id || ""}
           onChange={(e) => updateConfig("audio.device_id", e.target.value)}
-          className="w-full px-3 py-2 border rounded bg-white border-gray-300 text-gray-900"
+          disabled={devices.length === 0}
+          className="w-full px-3 py-2 border rounded bg-white border-gray-300 text-gray-900 disabled:bg-gray-100 disabled:cursor-not-allowed"
         >
-          <option value="">默认设备</option>
-          {devices.map((dev) => (
-            <option key={dev.id} value={dev.id}>
-              {dev.name} {dev.is_default && "(默认)"}
-            </option>
-          ))}
+          {devices.length === 0 ? (
+            <option value="">无可用设备</option>
+          ) : (
+            <>
+              <option value="">默认设备</option>
+              {devices.map((dev) => (
+                <option key={dev.id} value={dev.id}>
+                  {dev.name} {dev.is_default && "(默认)"}
+                </option>
+              ))}
+            </>
+          )}
         </select>
+        {devices.length === 0 && (
+          <p className="text-xs text-gray-500 mt-1">
+            请检查麦克风连接和系统权限设置
+          </p>
+        )}
       </div>
 
       {/* Microphone Test */}
@@ -124,8 +145,20 @@ export function AudioSettings() {
         <label className="text-sm font-medium text-gray-900 mb-2 block">麦克风测试</label>
         <div className="flex items-center space-x-2">
           <button
-            onClick={() => testMicrophone(config.audio.device_id || "")}
-            disabled={testing}
+            onClick={() => {
+              // 如果没有选择设备，使用默认设备（第一个设备）
+              const deviceId = config.audio.device_id || devices.find(d => d.is_default)?.id || devices[0]?.id;
+              if (!deviceId) {
+                showNotification({
+                  type: "error",
+                  title: "错误",
+                  message: "没有可用的音频设备",
+                });
+                return;
+              }
+              testMicrophone(deviceId);
+            }}
+            disabled={testing || devices.length === 0}
             className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 disabled:opacity-50 flex items-center font-medium"
           >
             <Mic className="w-4 h-4 mr-2" />
