@@ -133,15 +133,31 @@ impl AudioService {
 
     /// 测试麦克风
     pub async fn test_microphone(&self, device_id: &str) -> Result<bool> {
-        tracing::info!("Testing microphone: {}", device_id);
+        tracing::info!("=== Testing microphone: {} ===", device_id);
 
         // 查找设备
-        let device = self.find_device_by_id(device_id).await?;
+        let device = self.find_device_by_id(device_id).await
+            .map_err(|e| {
+                tracing::error!("Failed to find device {}: {}", device_id, e);
+                e
+            })?;
+
+        // 获取设备名称用于日志
+        let device_name = device.name().unwrap_or_else(|_| "unknown".to_string());
+        tracing::info!("Found device: {}", device_name);
 
         // 尝试获取配置来测试设备是否可用
-        let _config = device
+        let config = device
             .default_input_config()
-            .map_err(|_| AudioError::DeviceUnavailable("设备不可用".to_string()))?;
+            .map_err(|e| {
+                tracing::error!("Failed to get default input config for {}: {:?}", device_name, e);
+                AudioError::DeviceUnavailable(format!("设备不可用: {}", e))
+            })?;
+
+        let sample_rate = config.sample_rate();
+        let channels = config.channels();
+        tracing::info!("Device config: sample_rate={}, channels={}", sample_rate, channels);
+        tracing::info!("=== Microphone test PASSED: {} ===", device_name);
 
         // 设备可用
         Ok(true)
