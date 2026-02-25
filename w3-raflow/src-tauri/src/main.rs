@@ -25,37 +25,60 @@ async fn main() {
     tauri::Builder::default()
         .plugin(tauri_plugin_global_shortcut::Builder::new().build())
         .setup(move |app| {
+            tracing::info!("=== Tauri setup started ===");
+
+            // 检查全局快捷键插件是否可用
+            let shortcut_app = app.handle().clone();
+            let test_result = shortcut_app.global_shortcut().is_registered(Some(tauri_plugin_global_shortcut::Shortcut::new(
+                Some(tauri_plugin_global_shortcut::Modifiers::CONTROL | tauri_plugin_global_shortcut::Modifiers::SHIFT),
+                tauri_plugin_global_shortcut::Code::KeyO,
+            )));
+            tracing::info!("Is Ctrl+Shift+O registered: {}", test_result);
+
             // 设置系统托盘
             raflow_lib::tray::setup_tray(app.handle())?;
 
             // 注册默认热键
             let hotkey_config = config.hotkey.clone();
-            let modifiers: Vec<String> = hotkey_config.modifiers
-                .iter()
-                .map(|m| match m {
-                    raflow_lib::config::KeyModifier::Ctrl => "ctrl".to_string(),
-                    raflow_lib::config::KeyModifier::Alt => "alt".to_string(),
-                    raflow_lib::config::KeyModifier::Shift => "shift".to_string(),
-                    raflow_lib::config::KeyModifier::Super => "super".to_string(),
-                })
-                .collect();
-            let key = match &hotkey_config.key {
-                raflow_lib::config::KeyCode::Char(c) => c.to_string(),
-                raflow_lib::config::KeyCode::Backslash => "\\".to_string(),
-                raflow_lib::config::KeyCode::Space => "Space".to_string(),
-            };
+            if hotkey_config.enabled {
+                let modifiers: Vec<String> = hotkey_config.modifiers
+                    .iter()
+                    .map(|m| match m {
+                        raflow_lib::config::KeyModifier::Ctrl => "ctrl".to_string(),
+                        raflow_lib::config::KeyModifier::Alt => "alt".to_string(),
+                        raflow_lib::config::KeyModifier::Shift => "shift".to_string(),
+                        raflow_lib::config::KeyModifier::Super => "super".to_string(),
+                    })
+                    .collect();
+                let key = match &hotkey_config.key {
+                    raflow_lib::config::KeyCode::Char(c) => c.to_string(),
+                    raflow_lib::config::KeyCode::Backslash => "\\".to_string(),
+                    raflow_lib::config::KeyCode::Space => "Space".to_string(),
+                };
 
-            // 在新线程中注册热键
-            let app_handle = app.handle().clone();
-            std::thread::spawn(move || {
-                let rt = tokio::runtime::Runtime::new().unwrap();
-                rt.block_on(async {
-                    if let Err(e) = raflow_lib::commands::register_hotkey(app_handle, modifiers, key).await {
-                        tracing::error!("Failed to register default hotkey: {}", e);
-                    }
+                tracing::info!("Registering default hotkey: modifiers={:?}, key={}", modifiers, key);
+
+                // 在新线程中注册热键（因为 register_hotkey 是 async）
+                let app_handle = app.handle().clone();
+                std::thread::spawn(move || {
+                    tracing::info!("Hotkey registration thread started");
+                    let rt = tokio::runtime::Runtime::new().unwrap();
+                    rt.block_on(async {
+                        match raflow_lib::commands::register_hotkey(app_handle, modifiers, key).await {
+                            Ok(_) => {
+                                tracing::info!("=== DEFAULT HOTKEY REGISTERED SUCCESSFULLY ===");
+                            }
+                            Err(e) => {
+                                tracing::error!("=== FAILED TO REGISTER DEFAULT HOTKEY: {} ===", e);
+                            }
+                        }
+                    });
                 });
-            });
+            } else {
+                tracing::info!("Hotkey is disabled in config");
+            }
 
+            tracing::info!("=== Tauri setup completed ===");
             Ok(())
         })
         .manage(Arc::new(storage))

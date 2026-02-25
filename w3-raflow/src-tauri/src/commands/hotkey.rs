@@ -12,6 +12,10 @@ pub async fn register_hotkey(
     modifiers: Vec<String>,
     key: String,
 ) -> Result<(), String> {
+    tracing::info!("=== register_hotkey called ===");
+    tracing::info!("  modifiers: {:?}", modifiers);
+    tracing::info!("  key: {}", key);
+
     // 解析修饰键
     let mut mods = Modifiers::empty();
     for m in &modifiers {
@@ -20,33 +24,63 @@ pub async fn register_hotkey(
             "alt" => mods.insert(Modifiers::ALT),
             "shift" => mods.insert(Modifiers::SHIFT),
             "super" | "cmd" | "meta" => mods.insert(Modifiers::SUPER),
-            _ => {}
+            _ => {
+                tracing::warn!("Unknown modifier: {}", m);
+            }
         }
     }
 
+    tracing::info!("  Parsed modifiers: CONTROL={}, SHIFT={}, ALT={}, SUPER={}",
+        mods.contains(Modifiers::CONTROL),
+        mods.contains(Modifiers::SHIFT),
+        mods.contains(Modifiers::ALT),
+        mods.contains(Modifiers::SUPER)
+    );
+
     // 解析按键
     let code = parse_key_code(&key)?;
+    tracing::info!("  Parsed key code: {:?}", code);
 
-    // 创建快捷键 - API 接受 Option<Modifiers>
+    // 创建快捷键
     let shortcut = Shortcut::new(Some(mods), code);
+    tracing::info!("  Created shortcut: {:?}", shortcut);
 
     // 先注销所有快捷键
-    app.global_shortcut().unregister_all()
+    let gs = app.global_shortcut();
+    gs.unregister_all()
         .map_err(|e| format!("Failed to unregister existing shortcuts: {}", e))?;
+    tracing::info!("  Unregistered existing shortcuts");
+
+    // 检查快捷键是否已注册
+    let is_registered = gs.is_registered(shortcut);
+    tracing::info!("  Is shortcut already registered: {}", is_registered);
 
     // 注册全局快捷键
     let app_clone = app.clone();
-    app.global_shortcut().on_shortcut(shortcut, move |_app, _shortcut, _event| {
-        tracing::info!("Hotkey triggered, emitting event to frontend");
+    gs.on_shortcut(shortcut, move |_app, _shortcut, _event| {
+        tracing::info!("==================================================");
+        tracing::info!("=== HOTKEY TRIGGERED! Emitting event to frontend ===");
+        tracing::info!("==================================================");
         // 触发事件通知前端
         match app_clone.emit("hotkey-triggered", ()) {
-            Ok(_) => tracing::info!("Event emitted successfully"),
+            Ok(_) => tracing::info!("Event 'hotkey-triggered' emitted successfully"),
             Err(e) => tracing::error!("Failed to emit event: {}", e),
         }
     })
-    .map_err(|e| format!("Failed to register shortcut: {}", e))?;
+    .map_err(|e| {
+        tracing::error!("Failed to register shortcut callback: {}", e);
+        format!("Failed to register shortcut: {}", e)
+    })?;
 
-    tracing::info!("Hotkey registered: {:?}", shortcut);
+    // 验证注册成功
+    let is_registered = gs.is_registered(shortcut);
+    tracing::info!("=== HOTKEY REGISTERED SUCCESSFULLY ===");
+    tracing::info!("  Shortcut: {:?}", shortcut);
+    tracing::info!("  Is registered: {}", is_registered);
+
+    if !is_registered {
+        return Err("Shortcut registration reported as not registered".to_string());
+    }
 
     Ok(())
 }
@@ -57,7 +91,7 @@ pub async fn unregister_hotkey(app: AppHandle) -> Result<(), String> {
     app.global_shortcut().unregister_all()
         .map_err(|e| format!("Failed to unregister shortcuts: {}", e))?;
 
-    tracing::info!("All hotkeys unregistered");
+    tracing::info!("=== ALL HOTKEYS UNREGISTERED ===");
 
     Ok(())
 }
@@ -65,8 +99,13 @@ pub async fn unregister_hotkey(app: AppHandle) -> Result<(), String> {
 /// 测试热键
 #[tauri::command]
 pub async fn test_hotkey(app: AppHandle) -> Result<bool, String> {
-    // 简单检查插件是否可用
-    Ok(app.global_shortcut().unregister_all().is_ok())
+    // 检查插件是否可用
+    let gs = app.global_shortcut();
+    let result = gs.unregister_all().is_ok();
+
+    tracing::info!("Hotkey plugin test result: {}", result);
+
+    Ok(result)
 }
 
 /// 解析按键代码
