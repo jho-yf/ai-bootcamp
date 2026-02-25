@@ -138,80 +138,179 @@ impl AudioCapture {
         let default_config = device.default_input_config()
             .map_err(|e| AudioError::DeviceUnavailable(format!("获取设备配置失败: {}", e)))?;
 
-        // 检查配置是否匹配
-        let config_format = default_config.sample_format();
-        let cfg_rate = default_config.sample_rate();
+        // 获取格式信息
+        let sample_format = default_config.sample_format();
+        let sample_rate = default_config.sample_rate();
 
-        if config_format != SampleFormat::I16 {
-            return Err(AudioError::UnsupportedFormat(
-                format!("设备不支持 16位 PCM 格式，当前格式: {:?}", config_format)
-            ).into());
-        }
-
-        if cfg_rate != config.sample_rate {
-            return Err(AudioError::UnsupportedFormat(
-                format!("设备不支持 {}kHz 采样率，当前采样率: {}kHz",
-                    config.sample_rate / 1000,
-                    cfg_rate / 1000)
-            ).into());
-        }
+        tracing::info!("设备音频格式: {:?}, 采样率: {}Hz", sample_format, sample_rate);
 
         // 使用默认配置
-        let stream_config = default_config.into();
+        let stream_config: cpal::StreamConfig = default_config.clone().into();
 
         let sender = self.sender.clone();
         let is_running = self.is_running.clone();
+        let target_sample_rate = config.sample_rate;
+        let need_resample = sample_rate != target_sample_rate;
 
-        // 数据回调闭包
-        let data_callback = move |data: &cpal::Data, _: &cpal::InputCallbackInfo| {
-            if !is_running.load(std::sync::atomic::Ordering::Acquire) {
-                return;
+        // 根据格式创建不同的数据回调
+        match sample_format {
+            SampleFormat::I16 => {
+                let data_callback = move |data: &cpal::Data, _: &cpal::InputCallbackInfo| {
+                    if !is_running.load(std::sync::atomic::Ordering::Acquire) {
+                        return;
+                    }
+
+                    if let Some(bytes) = data.as_slice() {
+                        let samples: Vec<i16> = bytes
+                            .chunks_exact(2)
+                            .map(|chunk: &[u8]| (chunk[0] as i16) | ((chunk[1] as i16) << 8))
+                            .collect();
+
+                        let final_samples = if need_resample {
+                            convert::resample(&samples, sample_rate, target_sample_rate)
+                        } else {
+                            samples
+                        };
+
+                        let frame = AudioFrame::new(AudioFrame::current_timestamp(), final_samples);
+                        let _ = sender.try_send(frame);
+                    }
+                };
+
+                self.build_and_start_stream(device, &stream_config, SampleFormat::I16, data_callback)?;
             }
+            SampleFormat::F32 => {
+                let data_callback = move |data: &cpal::Data, _: &cpal::InputCallbackInfo| {
+                    if !is_running.load(std::sync::atomic::Ordering::Acquire) {
+                        return;
+                    }
 
-            // 将 cpal::Data 转换为字节切片，然后转换为 i16 样本
-            if let Some(bytes) = data.as_slice() {
-                let samples: Vec<i16> = bytes
-                    .chunks_exact(2)
-                    .map(|chunk: &[u8]| {
-                        (chunk[0] as i16) | ((chunk[1] as i16) << 8)
-                    })
-                    .collect();
+                    if let Some(bytes) = data.as_slice() {
+                        // 将字节转换为 f32 样本
+                        let f32_samples: Vec<f32> = bytes
+                            .chunks_exact(4)
+                            .map(|chunk: &[u8]| {
+                                f32::from_le_bytes([chunk[0], chunk[1], chunk[2], chunk[3]])
+                            })
+                            .collect();
 
-                let frame = AudioFrame::new(AudioFrame::current_timestamp(), samples);
+                        // 转换为 i16
+                        let samples = convert::f32_to_i16(&f32_samples);
 
-                // 发送音频帧，如果通道满则丢弃
-                let _ = sender.try_send(frame);
+                        let final_samples = if need_resample {
+                            convert::resample(&samples, sample_rate, target_sample_rate)
+                        } else {
+                            samples
+                        };
+
+                        let frame = AudioFrame::new(AudioFrame::current_timestamp(), final_samples);
+                        let _ = sender.try_send(frame);
+                    }
+                };
+
+                self.build_and_start_stream(device, &stream_config, SampleFormat::F32, data_callback)?;
             }
-        };
+            SampleFormat::I32 => {
+                let data_callback = move |data: &cpal::Data, _: &cpal::InputCallbackInfo| {
+                    if !is_running.load(std::sync::atomic::Ordering::Acquire) {
+                        return;
+                    }
 
-        // 错误回调闭包
+                    if let Some(bytes) = data.as_slice() {
+                        let i32_samples: Vec<i32> = bytes
+                            .chunks_exact(4)
+                            .map(|chunk: &[u8]| {
+                                i32::from_le_bytes([chunk[0], chunk[1], chunk[2], chunk[3]])
+                            })
+                            .collect();
+
+                        let samples = convert::i32_to_i16(&i32_samples);
+
+                        let final_samples = if need_resample {
+                            convert::resample(&samples, sample_rate, target_sample_rate)
+                        } else {
+                            samples
+                        };
+
+                        let frame = AudioFrame::new(AudioFrame::current_timestamp(), final_samples);
+                        let _ = sender.try_send(frame);
+                    }
+                };
+
+                self.build_and_start_stream(device, &stream_config, SampleFormat::I32, data_callback)?;
+            }
+            SampleFormat::U16 => {
+                let data_callback = move |data: &cpal::Data, _: &cpal::InputCallbackInfo| {
+                    if !is_running.load(std::sync::atomic::Ordering::Acquire) {
+                        return;
+                    }
+
+                    if let Some(bytes) = data.as_slice() {
+                        let u16_samples: Vec<u16> = bytes
+                            .chunks_exact(2)
+                            .map(|chunk: &[u8]| u16::from_le_bytes([chunk[0], chunk[1]]))
+                            .collect();
+
+                        let samples = convert::u16_to_i16(&u16_samples);
+
+                        let final_samples = if need_resample {
+                            convert::resample(&samples, sample_rate, target_sample_rate)
+                        } else {
+                            samples
+                        };
+
+                        let frame = AudioFrame::new(AudioFrame::current_timestamp(), final_samples);
+                        let _ = sender.try_send(frame);
+                    }
+                };
+
+                self.build_and_start_stream(device, &stream_config, SampleFormat::U16, data_callback)?;
+            }
+            _ => {
+                return Err(AudioError::UnsupportedFormat(
+                    format!("不支持的音频格式: {:?}", sample_format)
+                ).into());
+            }
+        }
+
+        self.is_running.store(true, std::sync::atomic::Ordering::Release);
+        tracing::info!("音频捕获已启动 (格式: {:?}, 原始采样率: {}Hz)", sample_format, sample_rate);
+        Ok(())
+    }
+
+    /// 构建并启动音频流
+    fn build_and_start_stream<F>(
+        &mut self,
+        device: &Device,
+        stream_config: &cpal::StreamConfig,
+        sample_format: SampleFormat,
+        data_callback: F,
+    ) -> Result<()>
+    where
+        F: FnMut(&cpal::Data, &cpal::InputCallbackInfo) + Send + 'static,
+    {
         let error_callback = move |err| {
             tracing::error!("音频流错误: {}", err);
         };
 
-        // 构建输入流
         let stream = device
             .build_input_stream_raw(
-                &stream_config,
-                SampleFormat::I16,
+                stream_config,
+                sample_format,
                 data_callback,
                 error_callback,
-                None, // 超时
+                None,
             )
             .map_err(|e| AudioError::StreamError(format!("创建音频流失败: {}", e)))?;
 
         self.stream = Some(stream);
 
-        // 启动流
         if let Some(stream) = &self.stream {
             stream
                 .play()
                 .map_err(|e| AudioError::StreamError(format!("启动音频流失败: {}", e)))?;
         }
 
-        self.is_running.store(true, std::sync::atomic::Ordering::Release);
-
-        tracing::info!("音频捕获已启动");
         Ok(())
     }
 
