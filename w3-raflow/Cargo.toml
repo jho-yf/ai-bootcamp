@@ -16,7 +16,7 @@ tauri-plugin-shell = "2.0"
 
 # 异步运行时
 tokio = { version = "1.49", features = ["full"] }
-tokio-tungstenite = "0.28"
+tokio-tungstenite = { version = "0.28", features = ["native-tls"] }
 futures-util = "0.3"
 
 # 序列化
