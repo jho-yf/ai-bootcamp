@@ -57,6 +57,10 @@ mod tests {
 
         assert_eq!(config.hotkey.enabled, true);
         assert_eq!(config.hotkey.modifiers.len(), 2);
+        // 验证默认快捷键是 Ctrl + Shift + O
+        assert!(config.hotkey.modifiers.contains(&raflow_lib::config::KeyModifier::Ctrl));
+        assert!(config.hotkey.modifiers.contains(&raflow_lib::config::KeyModifier::Shift));
+        assert_eq!(config.hotkey.key, raflow_lib::config::KeyCode::Char('o'));
 
         assert_eq!(config.text.strategy, "auto");
         assert_eq!(config.text.insertion_delay, 100);
