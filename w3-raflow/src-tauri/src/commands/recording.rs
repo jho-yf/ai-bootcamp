@@ -8,16 +8,15 @@ use std::sync::Arc;
 use crate::core::RaFlowApp;
 use crate::config::ConfigStorage;
 
-/// 热键触发的录音切换
+/// 热键触发的录音切换（内部实现）
 ///
-/// 这是热键触发时应该调用的命令，它会进行完整的前置检查
-#[tauri::command]
-pub async fn toggle_recording(
+/// 可以直接从热键回调中调用，不需要通过 Tauri 命令系统
+pub async fn toggle_recording_impl(
     app: AppHandle,
-    raflow_app: State<'_, Arc<RaFlowApp>>,
-    storage: State<'_, Arc<ConfigStorage>>,
+    raflow_app: Arc<RaFlowApp>,
+    storage: Arc<ConfigStorage>,
 ) -> Result<(), String> {
-    tracing::info!("=== toggle_recording called ===");
+    tracing::info!("=== toggle_recording_impl called ===");
 
     // 1. 加载配置
     let config = storage.load()
@@ -83,6 +82,18 @@ pub async fn toggle_recording(
         tracing::info!("Recording transcription started successfully");
         Ok(())
     }
+}
+
+/// 热键触发的录音切换
+///
+/// 这是热键触发时应该调用的命令，它会进行完整的前置检查
+#[tauri::command]
+pub async fn toggle_recording(
+    app: AppHandle,
+    raflow_app: State<'_, Arc<RaFlowApp>>,
+    storage: State<'_, Arc<ConfigStorage>>,
+) -> Result<(), String> {
+    toggle_recording_impl(app, raflow_app.inner().clone(), storage.inner().clone()).await
 }
 
 /// 检查录音功能是否可用

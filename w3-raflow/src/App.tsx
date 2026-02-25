@@ -44,16 +44,21 @@ function App() {
 
   // Initialize config and event listeners on mount
   useEffect(() => {
+    console.log("=== App mounted, setting up event listeners ===");
+
     loadConfig();
 
     // Setup hotkey event listener
     const setupHotkeyListener = async () => {
+      console.log("Setting up hotkey listener...");
       try {
         const unlisten = await listen("hotkey-triggered", async () => {
-          console.log("Frontend: Hotkey triggered");
+          console.log("=== Frontend: Hotkey triggered! ===");
+          console.log("Calling toggle_recording command...");
           try {
             // 使用带验证的 toggle_recording 命令
             await recordingApi.toggleRecording();
+            console.log("toggle_recording completed successfully");
           } catch (error) {
             console.error("Failed to toggle recording:", error);
             // 错误消息已经在后端通过 show-error 事件发送
@@ -61,17 +66,18 @@ function App() {
           }
         });
         hotkeyUnlistenRef.current = unlisten;
-        console.log("Hotkey event listener registered");
+        console.log("=== Hotkey event listener registered successfully ===");
       } catch (error) {
-        console.error("Failed to setup hotkey listener:", error);
+        console.error("=== Failed to setup hotkey listener ===", error);
       }
     };
 
     // Setup show-error event listener（用于后端发送的错误提示）
     const setupErrorListener = async () => {
+      console.log("Setting up error listener...");
       try {
         const unlisten = await events.onShowError((error) => {
-          console.error("Received error from backend:", error);
+          console.error("=== Received error from backend ===", error);
           showNotification({
             type: "error",
             title: "操作失败",
@@ -81,9 +87,9 @@ function App() {
         });
         // 存储取消监听的函数
         (window as any).errorUnlisten = unlisten;
-        console.log("Error event listener registered");
+        console.log("=== Error event listener registered successfully ===");
       } catch (error) {
-        console.error("Failed to setup error listener:", error);
+        console.error("=== Failed to setup error listener ===", error);
       }
     };
 

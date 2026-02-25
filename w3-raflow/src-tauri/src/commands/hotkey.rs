@@ -2,7 +2,7 @@
 
 //! 热键相关命令
 
-use tauri::{AppHandle, Emitter};
+use tauri::{AppHandle, Emitter, Manager};
 use tauri_plugin_global_shortcut::{GlobalShortcutExt, Shortcut, Code, Modifiers};
 
 /// 注册热键
@@ -59,13 +59,38 @@ pub async fn register_hotkey(
     let app_clone = app.clone();
     gs.on_shortcut(shortcut, move |_app, _shortcut, _event| {
         tracing::info!("==================================================");
-        tracing::info!("=== HOTKEY TRIGGERED! Emitting event to frontend ===");
+        tracing::info!("=== HOTKEY TRIGGERED! Calling toggle_recording directly ===");
         tracing::info!("==================================================");
-        // 触发事件通知前端
-        match app_clone.emit("hotkey-triggered", ()) {
-            Ok(_) => tracing::info!("Event 'hotkey-triggered' emitted successfully"),
-            Err(e) => tracing::error!("Failed to emit event: {}", e),
-        }
+
+        // 直接调用 toggle_recording 命令，而不是通过事件传递
+        let app_handle = app_clone.clone();
+        tokio::spawn(async move {
+            // 获取需要的状态
+            let storage = app_handle.try_state::<std::sync::Arc<crate::config::ConfigStorage>>();
+            let raflow_app = app_handle.try_state::<std::sync::Arc<crate::core::RaFlowApp>>();
+
+            match (storage, raflow_app) {
+                (Some(storage), Some(raflow_app)) => {
+                    // 获取内部的 Arc
+                    let storage_arc = storage.inner().clone();
+                    let raflow_app_arc = raflow_app.inner().clone();
+
+                    // 调用 toggle_recording
+                    match crate::commands::toggle_recording_impl(app_handle.clone(), raflow_app_arc, storage_arc).await {
+                        Ok(_) => tracing::info!("toggle_recording completed successfully"),
+                        Err(e) => {
+                            tracing::error!("toggle_recording failed: {}", e);
+                            // 发送错误事件
+                            let _ = app_handle.emit("show-error", e);
+                        }
+                    }
+                }
+                _ => {
+                    tracing::error!("Required state not available");
+                    let _ = app_handle.emit("show-error", "应用状态未正确初始化");
+                }
+            }
+        });
     })
     .map_err(|e| {
         tracing::error!("Failed to register shortcut callback: {}", e);
