@@ -3,6 +3,7 @@
 
 use std::sync::Arc;
 use raflow_lib::{RaFlowApp, ConfigStorage, AppConfig};
+use tauri_plugin_global_shortcut::GlobalShortcutExt;
 
 #[tokio::main]
 async fn main() {
@@ -29,10 +30,11 @@ async fn main() {
 
             // 检查全局快捷键插件是否可用
             let shortcut_app = app.handle().clone();
-            let test_result = shortcut_app.global_shortcut().is_registered(Some(tauri_plugin_global_shortcut::Shortcut::new(
+            let test_shortcut = tauri_plugin_global_shortcut::Shortcut::new(
                 Some(tauri_plugin_global_shortcut::Modifiers::CONTROL | tauri_plugin_global_shortcut::Modifiers::SHIFT),
                 tauri_plugin_global_shortcut::Code::KeyO,
-            )));
+            );
+            let test_result = shortcut_app.global_shortcut().is_registered(test_shortcut);
             tracing::info!("Is Ctrl+Shift+O registered: {}", test_result);
 
             // 设置系统托盘
@@ -83,6 +85,7 @@ async fn main() {
         })
         .manage(Arc::new(storage))
         .manage(app.audio_service().clone())
+        .manage(Arc::new(app))
         .invoke_handler(tauri::generate_handler![
             // 配置命令
             raflow_lib::commands::get_config,
@@ -95,6 +98,9 @@ async fn main() {
             raflow_lib::commands::stop_recording,
             raflow_lib::commands::test_microphone,
             raflow_lib::commands::get_recording_state,
+            // 录音命令（带验证）
+            raflow_lib::commands::toggle_recording,
+            raflow_lib::commands::check_recording_availability,
             // 热键命令
             raflow_lib::commands::register_hotkey,
             raflow_lib::commands::unregister_hotkey,

@@ -44,6 +44,17 @@ export const audioApi = {
     invoke<boolean>("get_recording_state"),
 };
 
+/** 录音相关 API（带验证） */
+export const recordingApi = {
+  /** 热键触发的录音切换（包含前置验证） */
+  toggleRecording: () =>
+    invoke("toggle_recording"),
+
+  /** 检查录音功能是否可用 */
+  checkAvailability: () =>
+    invoke<{ available: boolean; issues: string[] }>("check_recording_availability"),
+};
+
 /** 配置相关 API */
 export const configApi = {
   /** 获取配置 */
@@ -86,6 +97,10 @@ export const events = {
   /** 监听连接状态变化事件 */
   onConnectionStateChanged: (callback: (connected: boolean) => void) =>
     listen("connection-state-changed", (event) => callback(event.payload as boolean)),
+
+  /** 监听显示错误事件（用于热键触发时的错误提示） */
+  onShowError: (callback: (error: string) => void) =>
+    listen("show-error", (event) => callback(event.payload as string)),
 };
 
 /** 热键相关 API */

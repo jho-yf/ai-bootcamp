@@ -6,7 +6,7 @@ import { listen } from "@tauri-apps/api/event";
 import { useConfigStore } from "./stores/configStore";
 import { useAudioStore } from "./stores/audioStore";
 import { useUIStore } from "./stores/uiStore";
-import { events } from "./api/tauri";
+import { events, recordingApi } from "./api/tauri";
 import type { TranscriptionResult } from "./api/types";
 import { Settings } from "./components/Settings";
 import { StatusIndicator } from "./components/StatusIndicator";
@@ -50,28 +50,40 @@ function App() {
     const setupHotkeyListener = async () => {
       try {
         const unlisten = await listen("hotkey-triggered", async () => {
-          console.log("Frontend: Hotkey triggered, isRecording:", isRecording);
+          console.log("Frontend: Hotkey triggered");
           try {
-            if (isRecording) {
-              console.log("Stopping recording...");
-              await invoke("stop_recording");
-            } else {
-              console.log("Starting recording...");
-              await invoke("start_recording", { deviceId: null });
-            }
+            // 使用带验证的 toggle_recording 命令
+            await recordingApi.toggleRecording();
           } catch (error) {
             console.error("Failed to toggle recording:", error);
-            showNotification({
-              type: "error",
-              title: "操作失败",
-              message: String(error),
-            });
+            // 错误消息已经在后端通过 show-error 事件发送
+            // 这里只需要记录日志
           }
         });
         hotkeyUnlistenRef.current = unlisten;
         console.log("Hotkey event listener registered");
       } catch (error) {
         console.error("Failed to setup hotkey listener:", error);
+      }
+    };
+
+    // Setup show-error event listener（用于后端发送的错误提示）
+    const setupErrorListener = async () => {
+      try {
+        const unlisten = await events.onShowError((error) => {
+          console.error("Received error from backend:", error);
+          showNotification({
+            type: "error",
+            title: "操作失败",
+            message: error,
+            duration: 5000,
+          });
+        });
+        // 存储取消监听的函数
+        (window as any).errorUnlisten = unlisten;
+        console.log("Error event listener registered");
+      } catch (error) {
+        console.error("Failed to setup error listener:", error);
       }
     };
 
@@ -143,6 +155,7 @@ function App() {
     };
 
     setupHotkeyListener();
+    setupErrorListener();
     setupOtherListeners();
     registerHotkey();
 
@@ -150,6 +163,9 @@ function App() {
     return () => {
       if (hotkeyUnlistenRef.current) {
         hotkeyUnlistenRef.current();
+      }
+      if ((window as any).errorUnlisten) {
+        (window as any).errorUnlisten();
       }
     };
   }, []);
