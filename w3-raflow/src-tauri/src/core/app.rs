@@ -118,84 +118,131 @@ impl RaFlowApp {
 
     /// 开始录音转写流程
     pub async fn start_recording_transcription(&self) -> Result<()> {
-        tracing::info!("Starting recording transcription flow");
+        tracing::info!("==================================================");
+        tracing::info!("=== STARTING RECORDING TRANSCRIPTION FLOW ===");
+        tracing::info!("==================================================");
 
         // 检查状态
         {
             let state = self.state.lock().await;
             if state.recording_state == RecordingState::Recording {
+                tracing::warn!("Already recording, ignoring request");
                 return Err(crate::core::error::AudioError::RecordingFailed("已在录音中".to_string()).into());
             }
         }
 
         // 更新状态
+        tracing::info!("Step 1: Updating state to Recording");
         self.state.lock().await.set_recording_state(RecordingState::Recording);
         self.hotkey_handler.set_recording_state(true).await;
 
         // 开始音频捕获
+        tracing::info!("Step 2: Starting audio capture");
         self.audio_service.start_recording(None).await?;
+        tracing::info!("Audio capture started");
 
         // 启动转录会话
+        tracing::info!("Step 3: Starting transcription session");
         let mut transcription_guard = self.transcription_service.lock().await;
         if let Some(transcription_service) = transcription_guard.as_mut() {
             transcription_service.start_session().await?;
+            tracing::info!("Transcription session started");
+        } else {
+            tracing::warn!("Transcription service is None");
         }
         drop(transcription_guard);
 
         // 启动音频转发任务
+        tracing::info!("Step 4: Starting audio forwarding task");
         let audio = self.audio_service.clone();
         let transcription = self.transcription_service.clone();
 
         tokio::spawn(async move {
+            tracing::info!("Audio forwarding task started");
+            let mut frame_count = 0u64;
             while audio.is_recording().await {
                 if let Some(frame) = audio.try_get_frame().await {
+                    frame_count += 1;
                     let bytes = frame.to_bytes();
 
                     let trans_guard = transcription.lock().await;
                     if let Some(ts) = trans_guard.as_ref() {
-                        let _ = ts.send_audio(bytes).await;
+                        match ts.send_audio(bytes).await {
+                            Ok(_) => {
+                                if frame_count % 100 == 0 {
+                                    tracing::debug!("Sent {} audio frames", frame_count);
+                                }
+                            }
+                            Err(e) => {
+                                tracing::error!("Failed to send audio: {}", e);
+                            }
+                        }
                     }
                 }
 
                 tokio::time::sleep(Duration::from_millis(10)).await;
             }
+            tracing::info!("Audio forwarding task stopped (sent {} frames total)", frame_count);
         });
+
+        tracing::info!("==================================================");
+        tracing::info!("=== RECORDING TRANSCRIPTION STARTED SUCCESSFULLY ===");
+        tracing::info!("==================================================");
 
         Ok(())
     }
 
     /// 停止录音转写流程
     pub async fn stop_recording_transcription(&self) -> Result<Option<String>> {
-        tracing::info!("Stopping recording transcription flow");
+        tracing::info!("==================================================");
+        tracing::info!("=== STOPPING RECORDING TRANSCRIPTION FLOW ===");
+        tracing::info!("==================================================");
 
         // 停止音频捕获
+        tracing::info!("Step 1: Stopping audio capture");
         self.audio_service.stop_recording().await?;
+        tracing::info!("Audio capture stopped");
 
         // 结束转录会话
+        tracing::info!("Step 2: Ending transcription session");
         let mut transcription_guard = self.transcription_service.lock().await;
         if let Some(transcription_service) = transcription_guard.as_mut() {
             transcription_service.end_session().await?;
+            tracing::info!("Transcription session ended");
         }
         drop(transcription_guard);
 
         // 获取最终结果
+        tracing::info!("Step 3: Waiting for final transcription result");
         let mut final_text = None;
         let mut result_receiver = self.result_receiver.lock().await;
         // 尝试获取最终结果
-        for _ in 0..10 {
+        for i in 0..10 {
             if let Some(result) = result_receiver.try_recv().ok() {
                 if result.is_final {
-                    final_text = Some(result.text);
+                    final_text = Some(result.text.clone());
+                    tracing::info!("Got final result ({} chars): {}", result.text.len(), result.text);
                     break;
                 }
             }
-            tokio::time::sleep(Duration::from_millis(100)).await;
+            if i < 9 {
+                tokio::time::sleep(Duration::from_millis(100)).await;
+            }
         }
         drop(result_receiver);
 
         // 更新状态
+        tracing::info!("Step 4: Updating state to Idle");
         self.state.lock().await.set_recording_state(RecordingState::Idle);
         self.hotkey_handler.set_recording_state(false).await;
+
+        tracing::info!("==================================================");
+        if let Some(ref text) = final_text {
+            tracing::info!("=== RECORDING STOPPED WITH RESULT: {} ===", text);
+        } else {
+            tracing::info!("=== RECORDING STOPPED (no result) ===");
+        }
+        tracing::info!("==================================================");
 
         Ok(final_text)
     }
