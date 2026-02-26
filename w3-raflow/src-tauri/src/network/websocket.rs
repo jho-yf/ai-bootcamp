@@ -6,8 +6,8 @@ use std::sync::Arc;
 use tokio::sync::Mutex;
 use tokio::sync::mpsc;
 use tokio_tungstenite::{
-    connect_async,
-    tungstenite::Message,
+    connect_async_tls_with_config,
+    tungstenite::{Message, protocol::WebSocketConfig, client::IntoClientRequest, http::header::HeaderName},
     MaybeTlsStream,
     WebSocketStream,
 };
@@ -17,176 +17,8 @@ use base64::{Engine as _, engine::general_purpose};
 use crate::core::{Result, error::NetworkError, AppError};
 use super::{ClientMessage, ServerMessage, TranscriptionResult};
 
-/// WebSocket 客户端
+/// WebSocket 客户端（支持并发写入）
 pub struct WebSocketClient {
-    /// WebSocket URL
-    url: String,
-
-    /// WebSocket 写入端
-    write: Arc<Mutex<Option<WebSocketStream<MaybeTlsStream<tokio::net::TcpStream>>>>>,
-
-    /// 是否已连接
-    connected: Arc<Mutex<bool>>,
-
-    /// 结果发送器
-    result_sender: mpsc::Sender<TranscriptionResult>,
-}
-
-impl WebSocketClient {
-    /// 创建新的 WebSocket 客户端
-    pub fn new(url: String, result_sender: mpsc::Sender<TranscriptionResult>) -> Self {
-        Self {
-            url,
-            write: Arc::new(Mutex::new(None)),
-            connected: Arc::new(Mutex::new(false)),
-            result_sender,
-        }
-    }
-
-    /// 连接到服务器
-    pub async fn connect(&mut self, init_msg: ClientMessage) -> Result<()> {
-        tracing::info!("Connecting to WebSocket: {}", self.url);
-
-        // 连接到服务器
-        let (ws_stream, _) = connect_async(&self.url)
-            .await
-            .map_err(|e| NetworkError::ConnectionFailed(format!("连接失败: {}", e)))?;
-
-        tracing::info!("WebSocket connected, sending initialization");
-
-        let (mut write, mut read) = ws_stream.split();
-
-        // 发送初始化消息
-        let init_json = serde_json::to_string(&init_msg)
-            .map_err(|e| NetworkError::SendFailed(format!("序列化初始化消息失败: {}", e)))?;
-
-        write
-            .send(Message::Text(init_json.into()))
-            .await
-            .map_err(|e| NetworkError::SendFailed(format!("发送初始化消息失败: {}", e)))?;
-
-        tracing::info!("Initialization message sent");
-
-        // 标记为已连接（不再保存 ws_stream）
-        *self.connected.lock().await = true;
-
-        // 启动接收循环
-        let sender = self.result_sender.clone();
-        let connected = self.connected.clone();
-
-        tokio::spawn(async move {
-            tracing::info!("Starting WebSocket receive loop");
-
-            while let Some(msg_result) = read.next().await {
-                match msg_result {
-                    Ok(Message::Text(text)) => {
-                        tracing::debug!("Received text message: {}", text);
-
-                        // 解析服务器消息
-                        if let Ok(server_msg) = serde_json::from_str::<ServerMessage>(&text) {
-                            match &server_msg {
-                                ServerMessage::Result { text, is_final, confidence, language } => {
-                                    let mut result = TranscriptionResult::new(text.clone(), *is_final, *confidence);
-                                    result.language = language.clone();
-                                    let _ = sender.send(result).await;
-                                }
-                                ServerMessage::Status { state } => {
-                                    tracing::info!("Server status: {}", state);
-                                }
-                                ServerMessage::Error { code, message } => {
-                                    tracing::error!("Server error: {} - {}", code, message);
-                                }
-                            }
-                        }
-                    }
-                    Ok(Message::Close(close_frame)) => {
-                        tracing::info!("WebSocket closed: {:?}", close_frame);
-                        *connected.lock().await = false;
-                        break;
-                    }
-                    Ok(Message::Ping(data)) => {
-                        // 响应 ping
-                        // tungstenite 会自动处理 pong
-                        tracing::trace!("Received ping: {:?}", data);
-                    }
-                    Ok(Message::Pong(data)) => {
-                        tracing::trace!("Received pong: {:?}", data);
-                    }
-                    Err(e) => {
-                        tracing::error!("WebSocket error: {}", e);
-                        *connected.lock().await = false;
-                        break;
-                    }
-                    _ => {}
-                }
-            }
-
-            tracing::info!("WebSocket receive loop ended");
-        });
-
-        Ok(())
-    }
-
-    /// 发送音频数据
-    pub async fn send_audio(&self, data: Vec<u8>) -> Result<()> {
-        if !*self.connected.lock().await {
-            return Err(NetworkError::ConnectionFailed("未连接到服务器".to_string()).into());
-        }
-
-        // 编码为 Base64
-        let base64_data = general_purpose::STANDARD.encode(&data);
-
-        let msg = ClientMessage::Audio { data: base64_data };
-        let json = serde_json::to_string(&msg)
-            .map_err(|e| NetworkError::SendFailed(format!("序列化音频消息失败: {}", e)))?;
-
-        // 注意：这里需要重构以支持并发写入
-        // 当前简化版本会在每次发送时重新获取流
-        // TODO: 改进以支持高效并发写入
-        tracing::trace!("Sending audio frame, size: {} bytes", data.len());
-
-        Ok(())
-    }
-
-    /// 发送结束标记
-    pub async fn send_end(&self) -> Result<()> {
-        if !*self.connected.lock().await {
-            return Ok(());
-        }
-
-        let msg = ClientMessage::End;
-        let json = serde_json::to_string(&msg)
-            .map_err(|e| NetworkError::SendFailed(format!("序列化结束消息失败: {}", e)))?;
-
-        tracing::info!("Sending end message");
-
-        // TODO: 实际发送消息
-        // 这需要重构 write 端的处理方式
-
-        Ok(())
-    }
-
-    /// 断开连接
-    pub async fn disconnect(&mut self) -> Result<()> {
-        tracing::info!("Disconnecting WebSocket");
-
-        *self.connected.lock().await = false;
-
-        if let Some(mut ws_stream) = self.write.lock().await.take() {
-            let _ = ws_stream.close(None).await;
-        }
-
-        Ok(())
-    }
-
-    /// 检查是否已连接
-    pub async fn is_connected(&self) -> bool {
-        *self.connected.lock().await
-    }
-}
-
-/// 改进的 WebSocket 客户端，支持并发写入
-pub struct WebSocketClientV2 {
     /// WebSocket URL
     url: String,
 
@@ -200,7 +32,7 @@ pub struct WebSocketClientV2 {
     result_sender: mpsc::Sender<TranscriptionResult>,
 }
 
-impl WebSocketClientV2 {
+impl WebSocketClient {
     /// 创建新的 WebSocket 客户端
     pub fn new(url: String, result_sender: mpsc::Sender<TranscriptionResult>) -> Self {
         let (sender, _receiver) = mpsc::channel(100);
@@ -214,26 +46,71 @@ impl WebSocketClientV2 {
     }
 
     /// 连接到服务器
-    pub async fn connect(&mut self, init_msg: ClientMessage) -> Result<()> {
-        tracing::info!("Connecting to WebSocket: {}", self.url);
+    /// config: 配置参数（model_id, language_code, audio_format 等）
+    pub async fn connect(
+        &mut self,
+        api_key: String,
+        model_id: String,
+        language_code: String,
+        audio_format: String,
+        sample_rate: u32,
+    ) -> Result<()> {
+        tracing::info!("Connecting to WebSocket (V2): {}", self.url);
 
-        // 连接到服务器
-        let (ws_stream, _) = connect_async(&self.url)
-            .await
-            .map_err(|e| NetworkError::ConnectionFailed(format!("连接失败: {}", e)))?;
+        // 打印 API Key 信息（部分隐藏）
+        let key_preview = if api_key.len() > 8 {
+            format!("{}...{}", &api_key[..4], &api_key[api_key.len()-4..])
+        } else if api_key.is_empty() {
+            "(empty)".to_string()
+        } else {
+            "(too short)".to_string()
+        };
+        tracing::info!("API Key preview: {}, length: {}", key_preview, api_key.len());
+
+        // ElevenLabs Speech to Text Realtime API:
+        // 配置通过 URL 查询参数传递，使用 xi-api-key header 认证
+        // 参考：https://elevenlabs.io/docs/api-reference/speech-to-text/v-1-speech-to-text-realtime
+
+        // 构建 URL 查询参数
+        let mut params = vec![
+            format!("model_id={}", model_id),
+            format!("audio_format={}", audio_format),
+            "commit_strategy=manual".to_string(),
+        ];
+
+        // 只有当语言代码不为空时才添加
+        if !language_code.is_empty() {
+            params.push(format!("language_code={}", language_code));
+        }
+
+        let url_with_params = format!("{}?{}", self.url, params.join("&"));
+
+        tracing::info!("[连接中] 语言: {}", if language_code.is_empty() { "自动检测" } else { &language_code });
+
+        // 创建带有自定义 headers 的 WebSocket 请求
+        let mut request = url_with_params.clone().into_client_request()
+            .map_err(|e| NetworkError::ConnectionFailed(format!("创建请求失败: {}", e)))?;
+
+        // 添加 xi-api-key header
+        request.headers_mut().insert(
+            HeaderName::from_static("xi-api-key"),
+            api_key.parse()
+                .map_err(|e| NetworkError::AuthFailed(format!("无效的 API Key: {}", e)))?
+        );
+
+        // 使用 TLS 连接（wss://）
+        let (ws_stream, _) = connect_async_tls_with_config(
+            request,
+            None::<WebSocketConfig>,
+            false,
+            None,
+        )
+        .await
+        .map_err(|e| NetworkError::ConnectionFailed(format!("连接失败: {}", e)))?;
 
         let (mut write, mut read) = ws_stream.split();
 
-        // 发送初始化消息
-        let init_json = serde_json::to_string(&init_msg)
-            .map_err(|e| NetworkError::SendFailed(format!("序列化初始化消息失败: {}", e)))?;
-
-        write
-            .send(Message::Text(init_json.into()))
-            .await
-            .map_err(|e| NetworkError::SendFailed(format!("发送初始化消息失败: {}", e)))?;
-
-        tracing::info!("Initialization message sent");
+        tracing::info!("[已连接] 等待会话开始...");
 
         // 标记为已连接
         *self.connected.lock().await = true;
@@ -270,27 +147,65 @@ impl WebSocketClientV2 {
 
                         if let Ok(server_msg) = serde_json::from_str::<ServerMessage>(&text) {
                             match &server_msg {
-                                ServerMessage::Result { text, is_final, confidence, language } => {
-                                    let mut result = TranscriptionResult::new(text.clone(), *is_final, *confidence);
-                                    result.language = language.clone();
+                                ServerMessage::SessionStarted { session_id, config } => {
+                                    tracing::info!(
+                                        "[会话开始] Session: {}, Model: {}, 语言: {:?}",
+                                        session_id,
+                                        config.model_id,
+                                        config.language_code
+                                    );
+                                }
+                                ServerMessage::PartialTranscript { text } => {
+                                    tracing::info!("[转录中] {}", text);
+
+                                    let result = TranscriptionResult::new(text.clone(), false);
                                     let _ = sender.send(result).await;
                                 }
-                                ServerMessage::Status { state } => {
-                                    tracing::info!("Server status: {}", state);
+                                ServerMessage::CommittedTranscript { text } => {
+                                    tracing::info!("[转录完成] {}", text);
+
+                                    let result = TranscriptionResult::new(text.clone(), true);
+                                    let _ = sender.send(result).await;
+                                }
+                                ServerMessage::CommittedTranscriptWithTimestamps { text, language_code, words } => {
+                                    tracing::info!("[转录完成] {} (语言: {:?}, 词数: {})", text, language_code, words.len());
+
+                                    let mut result = TranscriptionResult::new(text.clone(), true);
+                                    result.language = language_code.clone();
+                                    let _ = sender.send(result).await;
                                 }
                                 ServerMessage::Error { code, message } => {
-                                    tracing::error!("Server error: {} - {}", code, message);
+                                    tracing::error!("[API错误] {}: {}", code, message);
+                                }
+                                ServerMessage::AuthError { message } => {
+                                    tracing::error!("[认证错误] {}", message);
+                                    *connected_read.lock().await = false;
+                                    break;
+                                }
+                                ServerMessage::QuotaExceededError { message } => {
+                                    tracing::error!("[配额超限] {}", message);
+                                }
+                                ServerMessage::ThrottledError { message } => {
+                                    tracing::warn!("[限流] {}", message);
+                                }
+                                ServerMessage::RateLimitedError { message } => {
+                                    tracing::warn!("[频率限制] {}", message);
+                                }
+                                ServerMessage::CommitThrottled { error } => {
+                                    tracing::debug!("[提交忽略] {}", error);
                                 }
                             }
+                        } else {
+                            tracing::warn!("Failed to parse server message: {}", text);
                         }
                     }
                     Ok(Message::Close(_)) => {
-                        tracing::info!("WebSocket closed");
+                        tracing::info!("[连接关闭]");
                         *connected_read.lock().await = false;
                         break;
                     }
                     Err(e) => {
-                        tracing::error!("WebSocket error: {}", e);
+                        tracing::error!("[连接错误] {}", e);
                         *connected_read.lock().await = false;
                         break;
                     }
@@ -303,13 +218,19 @@ impl WebSocketClientV2 {
     }
 
     /// 发送音频数据
-    pub async fn send_audio(&self, data: Vec<u8>) -> Result<()> {
+    pub async fn send_audio(&self, data: Vec<u8>, sample_rate: u32) -> Result<()> {
         if !*self.connected.lock().await {
             return Err(NetworkError::ConnectionFailed("未连接到服务器".to_string()).into());
         }
 
         let base64_data = general_purpose::STANDARD.encode(&data);
-        let msg = ClientMessage::Audio { data: base64_data };
+        let msg = ClientMessage::InputAudioChunk {
+            audio_base_64: base64_data,
+            commit: None,  // 使用手动提交模式，不自动提交
+            sample_rate,
+            previous_text: None,
+        };
+
         let json = serde_json::to_string(&msg)
             .map_err(|e| NetworkError::SendFailed(format!("序列化音频消息失败: {}", e)))?;
 
@@ -324,15 +245,22 @@ impl WebSocketClientV2 {
         Ok(())
     }
 
-    /// 发送结束标记
-    pub async fn send_end(&self) -> Result<()> {
+    /// 发送提交标记（手动提交模式）
+    pub async fn send_commit(&self) -> Result<()> {
         if !*self.connected.lock().await {
             return Ok(());
         }
 
-        let msg = ClientMessage::End;
+        // 发送一个空的音频块并设置 commit=true 来提交当前的转录
+        let msg = ClientMessage::InputAudioChunk {
+            audio_base_64: String::new(),
+            commit: Some(true),
+            sample_rate: 16000,  // 默认采样率
+            previous_text: None,
+        };
+
         let json = serde_json::to_string(&msg)
-            .map_err(|e| NetworkError::SendFailed(format!("序列化结束消息失败: {}", e)))?;
+            .map_err(|e| NetworkError::SendFailed(format!("序列化提交消息失败: {}", e)))?;
 
         self.message_queue
             .lock()

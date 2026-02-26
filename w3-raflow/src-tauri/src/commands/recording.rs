@@ -4,6 +4,7 @@
 
 use tauri::{AppHandle, Emitter, State};
 use std::sync::Arc;
+use tokio::sync::mpsc::error::TryRecvError;
 
 use crate::core::RaFlowApp;
 use crate::config::ConfigStorage;
@@ -78,6 +79,51 @@ pub async fn toggle_recording_impl(
         // 发送录音开始事件
         app.emit("recording-started", ())
             .map_err(|e| format!("Failed to emit event: {}", e))?;
+
+        // 启动转录结果监听任务
+        let app_clone = app.clone();
+        let raflow_clone = raflow_app.clone();
+        tokio::spawn(async move {
+            tracing::info!("Transcription result listener task started");
+            let mut consecutive_empty = 0;
+            loop {
+                // 尝试获取转录结果
+                let receiver = raflow_clone.result_receiver();
+                let mut receiver_guard = receiver.lock().await;
+                match receiver_guard.try_recv() {
+                    Ok(result) => {
+                        consecutive_empty = 0;
+                        tracing::info!("Emitting transcription result: is_final={}, text_len={}", result.is_final, result.text.len());
+
+                        if result.is_final {
+                            let _ = app_clone.emit("transcription-result", &result);
+                        } else {
+                            let _ = app_clone.emit("partial_transcription", &result.text);
+                        }
+                    }
+                    Err(TryRecvError::Empty) => {
+                        // 检查是否还在录音
+                        let is_recording = raflow_clone.state().lock().await.recording_state == crate::core::RecordingState::Recording;
+                        if !is_recording {
+                            consecutive_empty += 1;
+                            // 等待一段时间让最终结果到达
+                            if consecutive_empty > 20 {  // 1秒无新结果则退出
+                                tracing::info!("Recording stopped and no more results, ending listener task");
+                                break;
+                            }
+                        }
+                    }
+                    Err(TryRecvError::Disconnected) => {
+                        tracing::info!("Result channel disconnected, ending listener task");
+                        break;
+                    }
+                }
+                drop(receiver_guard);
+
+                tokio::time::sleep(std::time::Duration::from_millis(50)).await;
+            }
+            tracing::info!("Transcription result listener task ended");
+        });
 
         tracing::info!("Recording transcription started successfully");
         Ok(())

@@ -99,7 +99,7 @@ pub struct ElevenLabsConfig {
     /// API 密钥
     pub api_key: String,
 
-    /// 默认语言 (auto = 自动检测)
+    /// 默认语言 (ISO 639-3 代码，如 "zho" 中文, "eng" 英文, 留空自动检测)
     pub language: String,
 
     /// 连接超时 (秒)
@@ -110,7 +110,7 @@ impl Default for ElevenLabsConfig {
     fn default() -> Self {
         Self {
             api_key: String::new(),
-            language: "auto".to_string(),
+            language: "zho".to_string(),  // 默认中文
             timeout: 30,
         }
     }

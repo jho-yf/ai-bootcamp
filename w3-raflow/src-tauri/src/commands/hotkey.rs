@@ -2,8 +2,37 @@
 
 //! 热键相关命令
 
+use std::sync::atomic::{AtomicU64, Ordering};
+use std::time::{Duration, UNIX_EPOCH};
+
 use tauri::{AppHandle, Emitter, Manager};
 use tauri_plugin_global_shortcut::{GlobalShortcutExt, Shortcut, Code, Modifiers};
+
+/// 上次热键触发的时间戳（毫秒）
+static LAST_HOTKEY_TRIGGER: AtomicU64 = AtomicU64::new(0);
+
+/// 热键去抖动间隔（毫秒）
+const HOTKEY_DEBOUNCE_MS: u64 = 500;
+
+/// 检查是否应该处理热键（去抖动）
+fn should_handle_hotkey() -> bool {
+    let now = std::time::SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .unwrap_or_default()
+        .as_millis() as u64;
+
+    let last = LAST_HOTKEY_TRIGGER.load(Ordering::SeqCst);
+
+    // 如果距离上次触发不足 HOTKEY_DEBOUNCE_MS 毫秒，忽略此次触发
+    if now.saturating_sub(last) < HOTKEY_DEBOUNCE_MS {
+        tracing::warn!("Hotkey debounced ({}ms since last trigger)", now.saturating_sub(last));
+        return false;
+    }
+
+    // 更新最后触发时间
+    LAST_HOTKEY_TRIGGER.store(now, Ordering::SeqCst);
+    true
+}
 
 /// 注册热键
 #[tauri::command]
@@ -58,6 +87,11 @@ pub async fn register_hotkey(
     // 注册全局快捷键
     let app_clone = app.clone();
     gs.on_shortcut(shortcut, move |_app, _shortcut, _event| {
+        // 去抖动检查
+        if !should_handle_hotkey() {
+            return;
+        }
+
         tracing::info!("==================================================");
         tracing::info!("=== HOTKEY TRIGGERED! Calling toggle_recording directly ===");
         tracing::info!("==================================================");

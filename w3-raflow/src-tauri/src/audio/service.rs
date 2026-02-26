@@ -33,7 +33,8 @@ pub struct AudioService {
 impl AudioService {
     /// 创建新的音频服务
     pub fn new() -> Self {
-        let (sender, receiver) = mpsc::channel(100);
+        // 增加 channel 容量以避免帧丢失
+        let (sender, receiver) = mpsc::channel(1000);
 
         Self {
             capture: Arc::new(Mutex::new(None)),

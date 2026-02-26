@@ -152,6 +152,10 @@ impl AudioCapture {
         let target_sample_rate = config.sample_rate;
         let need_resample = sample_rate != target_sample_rate;
 
+        // 重要：在启动流之前设置 is_running = true
+        // 否则回调函数会在检查时发现 is_running = false 并直接返回
+        self.is_running.store(true, std::sync::atomic::Ordering::Release);
+
         // 根据格式创建不同的数据回调
         match sample_format {
             SampleFormat::I16 => {
@@ -160,42 +164,31 @@ impl AudioCapture {
                         return;
                     }
 
-                    if let Some(bytes) = data.as_slice() {
-                        let samples: Vec<i16> = bytes
-                            .chunks_exact(2)
-                            .map(|chunk: &[u8]| (chunk[0] as i16) | ((chunk[1] as i16) << 8))
-                            .collect();
-
+                    if let Some(i16_samples) = data.as_slice::<i16>() {
                         let final_samples = if need_resample {
-                            convert::resample(&samples, sample_rate, target_sample_rate)
+                            convert::resample(i16_samples, sample_rate, target_sample_rate)
                         } else {
-                            samples
+                            i16_samples.to_vec()
                         };
 
                         let frame = AudioFrame::new(AudioFrame::current_timestamp(), final_samples);
-                        let _ = sender.try_send(frame);
+
+                        if let Err(e) = sender.try_send(frame) {
+                            eprintln!("[Audio Capture I16] Failed to send frame: {:?}", e);
+                        }
                     }
                 };
 
                 self.build_and_start_stream(device, &stream_config, SampleFormat::I16, data_callback)?;
             }
             SampleFormat::F32 => {
-                let data_callback = move |data: &cpal::Data, _: &cpal::InputCallbackInfo| {
+                let data_callback = move |data: &cpal::Data, _info: &cpal::InputCallbackInfo| {
                     if !is_running.load(std::sync::atomic::Ordering::Acquire) {
                         return;
                     }
 
-                    if let Some(bytes) = data.as_slice() {
-                        // 将字节转换为 f32 样本
-                        let f32_samples: Vec<f32> = bytes
-                            .chunks_exact(4)
-                            .map(|chunk: &[u8]| {
-                                f32::from_le_bytes([chunk[0], chunk[1], chunk[2], chunk[3]])
-                            })
-                            .collect();
-
-                        // 转换为 i16
-                        let samples = convert::f32_to_i16(&f32_samples);
+                    if let Some(f32_samples) = data.as_slice::<f32>() {
+                        let samples = convert::f32_to_i16(f32_samples);
 
                         let final_samples = if need_resample {
                             convert::resample(&samples, sample_rate, target_sample_rate)
@@ -216,15 +209,8 @@ impl AudioCapture {
                         return;
                     }
 
-                    if let Some(bytes) = data.as_slice() {
-                        let i32_samples: Vec<i32> = bytes
-                            .chunks_exact(4)
-                            .map(|chunk: &[u8]| {
-                                i32::from_le_bytes([chunk[0], chunk[1], chunk[2], chunk[3]])
-                            })
-                            .collect();
-
-                        let samples = convert::i32_to_i16(&i32_samples);
+                    if let Some(i32_samples) = data.as_slice::<i32>() {
+                        let samples = convert::i32_to_i16(i32_samples);
 
                         let final_samples = if need_resample {
                             convert::resample(&samples, sample_rate, target_sample_rate)
@@ -245,13 +231,8 @@ impl AudioCapture {
                         return;
                     }
 
-                    if let Some(bytes) = data.as_slice() {
-                        let u16_samples: Vec<u16> = bytes
-                            .chunks_exact(2)
-                            .map(|chunk: &[u8]| u16::from_le_bytes([chunk[0], chunk[1]]))
-                            .collect();
-
-                        let samples = convert::u16_to_i16(&u16_samples);
+                    if let Some(u16_samples) = data.as_slice::<u16>() {
+                        let samples = convert::u16_to_i16(u16_samples);
 
                         let final_samples = if need_resample {
                             convert::resample(&samples, sample_rate, target_sample_rate)
@@ -273,7 +254,6 @@ impl AudioCapture {
             }
         }
 
-        self.is_running.store(true, std::sync::atomic::Ordering::Release);
         tracing::info!("音频捕获已启动 (格式: {:?}, 原始采样率: {}Hz)", sample_format, sample_rate);
         Ok(())
     }

@@ -9,16 +9,16 @@ use std::time::Duration;
 
 use crate::core::Result;
 use crate::config::ElevenLabsConfig;
-use super::{ClientMessage, TranscriptionResult};
-use super::websocket::WebSocketClientV2;
+use super::TranscriptionResult;
+use super::websocket::WebSocketClient;
 
 /// ElevenLabs Scribe v2 WebSocket URL
-const ELITE_LABS_WS_URL: &str = "wss://api.elevenlabs.io/v1/speech-to-text/stream";
+const ELITE_LABS_WS_URL: &str = "wss://api.elevenlabs.io/v1/speech-to-text/realtime";
 
 /// 转录服务
 pub struct TranscriptionService {
     /// WebSocket 客户端
-    client: Arc<Mutex<Option<WebSocketClientV2>>>,
+    client: Arc<Mutex<Option<WebSocketClient>>>,
 
     /// API 配置
     api_config: ElevenLabsConfig,
@@ -60,21 +60,21 @@ impl TranscriptionService {
         let sender = self.result_sender.lock().await.clone();
 
         // 创建 WebSocket 客户端
-        let mut ws_client = WebSocketClientV2::new(
+        let mut ws_client = WebSocketClient::new(
             ELITE_LABS_WS_URL.to_string(),
             sender,
         );
 
-        // 创建初始化消息
-        let init_msg = ClientMessage::Init {
-            api_key: self.api_config.api_key.clone(),
-            language: self.api_config.language.clone(),
-            format: "pcm_s16le".to_string(),
-            sample_rate: 16000,
-        };
+        // 转换语言代码为 ElevenLabs 支持的格式（ISO 639-3）
+        let language_code = Self::convert_language_code(&self.api_config.language);
 
-        // 连接
-        ws_client.connect(init_msg).await?;
+        ws_client.connect(
+            self.api_config.api_key.clone(),
+            "scribe_v2_realtime".to_string(),  // 使用 Scribe v2 Realtime 模型
+            language_code,
+            "pcm_16000".to_string(),  // 音频格式
+            16000,  // 采样率
+        ).await?;
 
         *self.client.lock().await = Some(ws_client);
         *self.connected.lock().await = true;
@@ -95,7 +95,7 @@ impl TranscriptionService {
 
         let client = self.client.lock().await;
         if let Some(client) = client.as_ref() {
-            client.send_audio(frame_bytes).await?;
+            client.send_audio(frame_bytes, 16000).await?;  // 使用 16kHz 采样率
         }
 
         Ok(())
@@ -105,10 +105,10 @@ impl TranscriptionService {
     pub async fn end_session(&self) -> Result<()> {
         tracing::info!("Ending transcription session");
 
-        // 发送结束标记
+        // 发送提交标记来获取最终的转录结果
         let client = self.client.lock().await;
         if let Some(ws_client) = client.as_ref() {
-            ws_client.send_end().await?;
+            ws_client.send_commit().await?;
         }
         drop(client);
 
@@ -148,6 +148,36 @@ impl TranscriptionService {
     /// 获取当前部分文本
     pub async fn get_partial_text(&self) -> String {
         self.partial_text.lock().await.clone()
+    }
+
+    /// 转换语言代码为 ElevenLabs 支持的格式（ISO 639-3）
+    fn convert_language_code(code: &str) -> String {
+        match code {
+            // 自动检测 - 使用空字符串
+            "auto" | "" => "".to_string(),
+            // 中文变体
+            "zh" | "zh-CN" | "zh-cn" | "zh-TW" | "zh-tw" | "zh-HK" | "zh-hk" => "zho".to_string(),
+            // 英文
+            "en" | "en-US" | "en-GB" | "en-AU" | "eng" => "eng".to_string(),
+            // 日文
+            "ja" | "jpn" => "jpn".to_string(),
+            // 韩文
+            "ko" | "kor" => "kor".to_string(),
+            // 法语
+            "fr" | "fra" | "fre" => "fra".to_string(),
+            // 德语
+            "de" | "deu" | "ger" => "deu".to_string(),
+            // 西班牙语
+            "es" | "spa" => "spa".to_string(),
+            // 意大利语
+            "it" | "ita" => "ita".to_string(),
+            // 葡萄牙语
+            "pt" | "por" => "por".to_string(),
+            // 俄语
+            "ru" | "rus" => "rus".to_string(),
+            // 其他 - 假设已经是 ISO 639-3 格式
+            other => other.to_string(),
+        }
     }
 }
 

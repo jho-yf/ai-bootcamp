@@ -138,14 +138,28 @@ impl RaFlowApp {
 
         // 开始音频捕获
         tracing::info!("Step 2: Starting audio capture");
-        self.audio_service.start_recording(None).await?;
+        if let Err(e) = self.audio_service.start_recording(None).await {
+            // 失败时清理状态
+            tracing::error!("Failed to start audio capture: {}", e);
+            self.state.lock().await.set_recording_state(RecordingState::Idle);
+            self.hotkey_handler.set_recording_state(false).await;
+            return Err(e);
+        }
         tracing::info!("Audio capture started");
 
         // 启动转录会话
         tracing::info!("Step 3: Starting transcription session");
         let mut transcription_guard = self.transcription_service.lock().await;
         if let Some(transcription_service) = transcription_guard.as_mut() {
-            transcription_service.start_session().await?;
+            if let Err(e) = transcription_service.start_session().await {
+                // 失败时清理状态和音频捕获
+                tracing::error!("Failed to start transcription session: {}", e);
+                drop(transcription_guard);
+                self.audio_service.stop_recording().await.ok();
+                self.state.lock().await.set_recording_state(RecordingState::Idle);
+                self.hotkey_handler.set_recording_state(false).await;
+                return Err(e);
+            }
             tracing::info!("Transcription session started");
         } else {
             tracing::warn!("Transcription service is None");
@@ -167,15 +181,8 @@ impl RaFlowApp {
 
                     let trans_guard = transcription.lock().await;
                     if let Some(ts) = trans_guard.as_ref() {
-                        match ts.send_audio(bytes).await {
-                            Ok(_) => {
-                                if frame_count % 100 == 0 {
-                                    tracing::debug!("Sent {} audio frames", frame_count);
-                                }
-                            }
-                            Err(e) => {
-                                tracing::error!("Failed to send audio: {}", e);
-                            }
+                        if let Err(e) = ts.send_audio(bytes).await {
+                            tracing::error!("Failed to send audio frame: {}", e);
                         }
                     }
                 }
@@ -198,6 +205,19 @@ impl RaFlowApp {
         tracing::info!("=== STOPPING RECORDING TRANSCRIPTION FLOW ===");
         tracing::info!("==================================================");
 
+        // 使用辅助函数确保状态总是被重置
+        let result = self.stop_recording_transcription_inner().await;
+
+        // 无论成功还是失败，都重置状态
+        tracing::info!("Ensuring state is reset to Idle");
+        self.state.lock().await.set_recording_state(RecordingState::Idle);
+        self.hotkey_handler.set_recording_state(false).await;
+
+        result
+    }
+
+    /// 停止录音转写流程的内部实现
+    async fn stop_recording_transcription_inner(&self) -> Result<Option<String>> {
         // 停止音频捕获
         tracing::info!("Step 1: Stopping audio capture");
         self.audio_service.stop_recording().await?;
@@ -212,39 +232,15 @@ impl RaFlowApp {
         }
         drop(transcription_guard);
 
-        // 获取最终结果
-        tracing::info!("Step 3: Waiting for final transcription result");
-        let mut final_text = None;
-        let mut result_receiver = self.result_receiver.lock().await;
-        // 尝试获取最终结果
-        for i in 0..10 {
-            if let Some(result) = result_receiver.try_recv().ok() {
-                if result.is_final {
-                    final_text = Some(result.text.clone());
-                    tracing::info!("Got final result ({} chars): {}", result.text.len(), result.text);
-                    break;
-                }
-            }
-            if i < 9 {
-                tokio::time::sleep(Duration::from_millis(100)).await;
-            }
-        }
-        drop(result_receiver);
-
-        // 更新状态
-        tracing::info!("Step 4: Updating state to Idle");
-        self.state.lock().await.set_recording_state(RecordingState::Idle);
-        self.hotkey_handler.set_recording_state(false).await;
+        // 注意：结果通过 listener task 发送到前端，这里不再重复读取
+        // 等待一小段时间让最终结果被处理
+        tokio::time::sleep(Duration::from_millis(500)).await;
 
         tracing::info!("==================================================");
-        if let Some(ref text) = final_text {
-            tracing::info!("=== RECORDING STOPPED WITH RESULT: {} ===", text);
-        } else {
-            tracing::info!("=== RECORDING STOPPED (no result) ===");
-        }
+        tracing::info!("=== RECORDING STOPPED ===");
         tracing::info!("==================================================");
 
-        Ok(final_text)
+        Ok(None)
     }
 
     /// 获取状态
@@ -270,6 +266,11 @@ impl RaFlowApp {
     /// 获取热键处理器
     pub fn hotkey_handler(&self) -> &Arc<HotkeyHandler> {
         &self.hotkey_handler
+    }
+
+    /// 获取转录结果接收器
+    pub fn result_receiver(&self) -> &Arc<Mutex<mpsc::Receiver<TranscriptionResult>>> {
+        &self.result_receiver
     }
 
     /// 插入文本
