@@ -226,7 +226,7 @@ impl WebSocketClient {
         let base64_data = general_purpose::STANDARD.encode(&data);
         let msg = ClientMessage::InputAudioChunk {
             audio_base_64: base64_data,
-            commit: None,  // 使用手动提交模式，不自动提交
+            commit: None,
             sample_rate,
             previous_text: None,
         };

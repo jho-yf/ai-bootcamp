@@ -142,15 +142,20 @@ impl AudioCapture {
         let sample_format = default_config.sample_format();
         let sample_rate = default_config.sample_rate();
 
-        tracing::info!("设备音频格式: {:?}, 采样率: {}Hz", sample_format, sample_rate);
-
         // 使用默认配置
         let stream_config: cpal::StreamConfig = default_config.clone().into();
+        let channels = stream_config.channels;
+
+        tracing::info!(
+            "设备音频格式: {:?}, 采样率: {}Hz, 声道数: {}",
+            sample_format, sample_rate, channels
+        );
 
         let sender = self.sender.clone();
         let is_running = self.is_running.clone();
         let target_sample_rate = config.sample_rate;
         let need_resample = sample_rate != target_sample_rate;
+        let need_mono_convert = channels > 1;
 
         // 重要：在启动流之前设置 is_running = true
         // 否则回调函数会在检查时发现 is_running = false 并直接返回
@@ -165,10 +170,17 @@ impl AudioCapture {
                     }
 
                     if let Some(i16_samples) = data.as_slice::<i16>() {
-                        let final_samples = if need_resample {
-                            convert::resample(i16_samples, sample_rate, target_sample_rate)
+                        // 立体声转单声道
+                        let mono_samples = if need_mono_convert {
+                            convert::stereo_to_mono_n(i16_samples, channels as usize)
                         } else {
                             i16_samples.to_vec()
+                        };
+
+                        let final_samples = if need_resample {
+                            convert::resample(&mono_samples, sample_rate, target_sample_rate)
+                        } else {
+                            mono_samples
                         };
 
                         let frame = AudioFrame::new(AudioFrame::current_timestamp(), final_samples);
@@ -188,7 +200,14 @@ impl AudioCapture {
                     }
 
                     if let Some(f32_samples) = data.as_slice::<f32>() {
-                        let samples = convert::f32_to_i16(f32_samples);
+                        // 立体声转单声道 (在 f32 格式下)
+                        let mono_f32 = if need_mono_convert {
+                            convert::stereo_to_mono_f32(f32_samples, channels as usize)
+                        } else {
+                            f32_samples.to_vec()
+                        };
+
+                        let samples = convert::f32_to_i16(&mono_f32);
 
                         let final_samples = if need_resample {
                             convert::resample(&samples, sample_rate, target_sample_rate)
@@ -210,7 +229,14 @@ impl AudioCapture {
                     }
 
                     if let Some(i32_samples) = data.as_slice::<i32>() {
-                        let samples = convert::i32_to_i16(i32_samples);
+                        // 立体声转单声道 (在 i32 格式下)
+                        let mono_i32 = if need_mono_convert {
+                            convert::stereo_to_mono_n(i32_samples, channels as usize)
+                        } else {
+                            i32_samples.to_vec()
+                        };
+
+                        let samples = convert::i32_to_i16(&mono_i32);
 
                         let final_samples = if need_resample {
                             convert::resample(&samples, sample_rate, target_sample_rate)
@@ -232,7 +258,14 @@ impl AudioCapture {
                     }
 
                     if let Some(u16_samples) = data.as_slice::<u16>() {
-                        let samples = convert::u16_to_i16(u16_samples);
+                        // 立体声转单声道 (在 u16 格式下)
+                        let mono_u16 = if need_mono_convert {
+                            convert::stereo_to_mono_n(u16_samples, channels as usize)
+                        } else {
+                            u16_samples.to_vec()
+                        };
+
+                        let samples = convert::u16_to_i16(&mono_u16);
 
                         let final_samples = if need_resample {
                             convert::resample(&samples, sample_rate, target_sample_rate)
@@ -254,7 +287,10 @@ impl AudioCapture {
             }
         }
 
-        tracing::info!("音频捕获已启动 (格式: {:?}, 原始采样率: {}Hz)", sample_format, sample_rate);
+        tracing::info!(
+            "音频捕获已启动 (格式: {:?}, 原始采样率: {}Hz, 声道: {} -> 1)",
+            sample_format, sample_rate, channels
+        );
         Ok(())
     }
 
@@ -345,7 +381,7 @@ pub mod convert {
     }
 
     /// 将 i32 样本转换为 i16
-    pub fn i32_to_i16(samples: &[i32]) -> Vec<i16> {
+    pub fn i32_to_i16(samples: &[i32]) -> Vec<i16>{
         samples
             .iter()
             .map(|&s| {
@@ -365,6 +401,41 @@ pub mod convert {
         samples
             .iter()
             .map(|&s| (s as i16).wrapping_sub(i16::MIN as i16))
+            .collect()
+    }
+
+    /// 立体声转单声道 (通用版本，适用于整数类型)
+    /// 取所有声道的平均值
+    pub fn stereo_to_mono_n<T: Copy + std::ops::Add<Output = T> + std::ops::Div<Output = T> + From<u8>>(
+        samples: &[T],
+        channels: usize,
+    ) -> Vec<T> {
+        if channels <= 1 {
+            return samples.to_vec();
+        }
+
+        samples
+            .chunks_exact(channels)
+            .map(|chunk| {
+                let sum: T = chunk.iter().copied().fold(T::from(0), |a, b| a + b);
+                sum / T::from(channels as u8)
+            })
+            .collect()
+    }
+
+    /// 立体声转单声道 (f32 版本)
+    /// 取所有声道的平均值
+    pub fn stereo_to_mono_f32(samples: &[f32], channels: usize) -> Vec<f32> {
+        if channels <= 1 {
+            return samples.to_vec();
+        }
+
+        samples
+            .chunks_exact(channels)
+            .map(|chunk| {
+                let sum: f32 = chunk.iter().sum();
+                sum / channels as f32
+            })
             .collect()
     }
 

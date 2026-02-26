@@ -174,6 +174,7 @@ impl RaFlowApp {
         tokio::spawn(async move {
             tracing::info!("Audio forwarding task started");
             let mut frame_count = 0u64;
+
             while audio.is_recording().await {
                 if let Some(frame) = audio.try_get_frame().await {
                     frame_count += 1;
@@ -189,6 +190,7 @@ impl RaFlowApp {
 
                 tokio::time::sleep(Duration::from_millis(10)).await;
             }
+
             tracing::info!("Audio forwarding task stopped (sent {} frames total)", frame_count);
         });
 
