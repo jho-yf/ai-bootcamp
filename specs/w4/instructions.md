@@ -34,4 +34,4 @@
 
 ## openclaw 架构设计
 
-仔细 @vendors/openclaw 的代码，撰写一个详细的架构分析文档，必要时使用 mermaid chart 辅助说明，放在 `@specs/w4/009-openclaw-arch.md` 文件中，输出为中文。
+仔细 @vendors/openclaw 的代码，撰写一个详细的架构分析文档，包括但不限于：系统架构总览、分层架构设计、技术栈、数据模型设计、核心业务流程、系统安全设计等。必要时使用 mermaid chart 辅助说明，放在 `@specs/w4/009-openclaw-arch.md` 文件中，输出为中文。
