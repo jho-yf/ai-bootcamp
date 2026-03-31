@@ -1,0 +1,63 @@
+# PostgreSQL MCP Server Configuration Example
+# Copy this file to config.toml and adjust values as needed
+
+[database]
+# PostgreSQL connection URL
+# Required - can also be set via PG_MCP_DATABASE_URL env var
+url = "postgresql://user:password@localhost:5432/mydb"
+
+# Database schema to query
+# Default: "public"
+schema = "public"
+
+# Comma-separated list of allowed tables (optional)
+# If empty, all tables are allowed
+# allowed_tables = ["users", "orders", "products"]
+
+# Comma-separated list of excluded tables (optional)
+# These tables will be excluded from metadata and queries
+# excluded_tables = ["internal_logs", "secrets"]
+
+[llm]
+# OpenAI-compatible API URL
+# Default: "https://api.openai.com/v1"
+api_url = "https://api.openai.com/v1"
+
+# API key for the LLM service
+# Required - can also be set via PG_MCP_LLM_API_KEY env var
+api_key = "sk-your-api-key-here"
+
+# Model to use for SQL generation
+# Default: "gpt-4o"
+model = "gpt-4o"
+
+# Temperature for LLM responses (0.0 - 2.0)
+# Lower values = more deterministic, higher = more creative
+# Default: 0.0
+temperature = 0.0
+
+# Maximum tokens in LLM response
+# Default: 1000
+max_tokens = 1000
+
+[server]
+# Maximum number of rows to return in query results
+# Default: 1000
+max_rows = 1000
+
+# Query timeout in seconds
+# Default: 30
+query_timeout_secs = 30
+
+# Budget for database context in prompts (characters)
+# Default: 8000
+prompt_budget = 8000
+
+# Enable debug mode (shows full error messages)
+# Default: false
+debug = false
+
+# Metadata refresh interval in seconds
+# Set to 0 to disable automatic refresh
+# Default: 0
+metadata_refresh_secs = 0
