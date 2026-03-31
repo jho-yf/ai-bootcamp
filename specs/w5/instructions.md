@@ -48,8 +48,18 @@ think ultra hard, 根据 @specs/w5/001-postgres-mcp-prd.md 文档，使用 Rust 
 
 ## postgres mcp server impl
 
-commit and 根据 @specs/w5/003-postgres-mcp-impl-plan.md 实现 phase 1-6，think ultra hard
+commit and 根据 @specs/w5/003-postgres-mcp-impl-plan.md 实现 phase 1-6，think ultra hard，代码输出到 @w5-pg-mcp 目录下
+
+commit and 根据 @specs/w5/003-postgres-mcp-impl-plan.md 实现剩下所有 task，think ultra hard，代码输出到 @w5-pg-mcp 目录下
 
 ## postgres mcp server test plan
 
 根据 @specs/w5/003-postgres-mcp-impl-plan.md 和 @specs/w5/002-postgres-mcp-design.md 构建 pg-mcp 的测试计划，think ultra hard,文档放在 @specs/w5/005-postgres-mcp-test-plan.md 并使用 /codex:review review 输出到 @specs/w5/006-postgres-mcp-test-plan-review.md。最后根据 review 内容，修订并输出到 @specs/w5/005-postgres-mcp-test-plan-v2.md
+
+## 测试数据构建
+
+根据 @specs/w5/001-postgres-mcp-prd.md 在 @w5-pg-mcp/fixtures 下构建三个有意义的数据库，分别有少量，中等量级以及大量的 table/view/types/index 等schema,且有足够多的有意义的数据。生成这三个数据库的 sql 文件，并构建 Makefile 来重建这些测试数据库。
+
+## 测试 prompt 构建
+
+根据 @w5-pg-mcp/fixtures/ ,假设用户要用自然语言提问，然后 pg-mcp 来生成相应的 sql。帮我生成一个 test-prompts.md 的文档，里面包含各种对数据库内部数据的简单到复杂的提问 

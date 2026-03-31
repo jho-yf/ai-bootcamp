@@ -15,7 +15,7 @@ use sqlx::postgres::PgPoolOptions;
 use std::collections::HashSet;
 use std::sync::Arc;
 use std::time::Duration;
-use tracing::{error, info};
+use tracing::info;
 use validator::SqlValidator;
 
 #[tokio::main]
@@ -73,7 +73,7 @@ async fn main() -> anyhow::Result<()> {
 
     // Start metadata refresh loop if configured
     let refresh_handle = if config.server.metadata_refresh_secs > 0 {
-        let handle = metadata.start_refresh_loop(config.server.metadata_refresh_secs);
+        let handle = metadata.clone().start_refresh_loop(config.server.metadata_refresh_secs);
         info!(
             refresh_interval_secs = config.server.metadata_refresh_secs,
             "Metadata refresh loop started"

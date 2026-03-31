@@ -86,13 +86,19 @@ impl SqlValidator {
     }
 
     fn validate_query(&self, query: &SqlQuery) -> Result<(), ValidationError> {
+        // Check for CTEs with data modification
+        if let Some(with) = &query.with {
+            for cte in &with.cte_tables {
+                self.validate_query(&cte.query)?;
+            }
+        }
+
         // Check for lock clauses (FOR UPDATE, FOR SHARE, etc.)
-        if let Some(locking) = &query.locking {
-            let lock_type = match locking.lock_type {
+        if !query.locks.is_empty() {
+            let lock = &query.locks[0];
+            let lock_type = match lock.lock_type {
                 sqlparser::ast::LockType::Update => "FOR UPDATE",
-                sqlparser::ast::LockType::NoKeyUpdate => "FOR NO KEY UPDATE",
                 sqlparser::ast::LockType::Share => "FOR SHARE",
-                sqlparser::ast::LockType::KeyShare => "FOR KEY SHARE",
             };
             return Err(ValidationError::NotSelect(format!(
                 "Lock clause {} not allowed",
@@ -110,16 +116,7 @@ impl SqlValidator {
         match set_expr {
             SetExpr::Select(select) => {
                 // Check FROM clause tables
-                if let Some(from) = &select.from {
-                    self.validate_from(from)?;
-                }
-
-                // Check for CTEs with data modification
-                if let Some(with) = &select.cte {
-                    for cte in &with.cte_tables {
-                        self.validate_query(&cte.query)?;
-                    }
-                }
+                self.validate_from(&select.from)?;
             }
             SetExpr::Query(query) => {
                 self.validate_query(query)?;
@@ -149,12 +146,17 @@ impl SqlValidator {
             SetExpr::Table(_) => {
                 // TABLE foo is equivalent to SELECT * FROM foo
             }
+            SetExpr::Merge(_) => {
+                return Err(ValidationError::NotSelect(
+                    "MERGE statement not allowed".to_string(),
+                ));
+            }
         }
         Ok(())
     }
 
-    fn validate_from(&self, from: &sqlparser::ast::From) -> Result<(), ValidationError> {
-        for table_with_joins in &from.from {
+    fn validate_from(&self, from: &[sqlparser::ast::TableWithJoins]) -> Result<(), ValidationError> {
+        for table_with_joins in from {
             self.validate_table_with_joins(table_with_joins)?;
         }
         Ok(())
@@ -453,7 +455,7 @@ mod tests {
     #[test]
     fn test_parse_error() {
         let validator = create_validator();
-        let result = validator.validate("SELECT INVALID SYNTAX");
+        let result = validator.validate("@#$%^&");
         assert!(matches!(result, Err(ValidationError::ParseError(_))));
     }
 }

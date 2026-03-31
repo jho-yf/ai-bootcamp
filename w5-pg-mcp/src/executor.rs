@@ -1,11 +1,12 @@
+use serde::Serialize;
 use serde_json::{json, Value};
 use sqlx::postgres::PgPool;
-use sqlx::{Column, Row};
+use sqlx::{Column, Row, TypeInfo as _};
 use std::time::Instant;
 use thiserror::Error;
 use tracing::{debug, info};
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize)]
 pub struct QueryResult {
     pub sql: String,
     pub columns: Vec<String>,
@@ -28,6 +29,7 @@ pub enum ExecutorError {
     SerializationError(String),
 }
 
+#[derive(Debug)]
 pub struct QueryExecutor {
     pool: PgPool,
     max_rows: u32,
@@ -150,8 +152,8 @@ impl QueryExecutor {
 
         if let Ok(statements) = Parser::parse_sql(&dialect, sql) {
             if let Some(sqlparser::ast::Statement::Query(query)) = statements.first() {
-                // Check if the outermost query has a LIMIT
-                return query.limit.is_some();
+                // Check if the outermost query has a LIMIT clause
+                return query.limit_clause.is_some();
             }
         }
 
@@ -170,13 +172,9 @@ impl QueryExecutor {
     }
 
     fn get_column_value(&self, row: &sqlx::postgres::PgRow, i: usize) -> Result<Value, ExecutorError> {
-        let raw_column = row.try_get_raw(i).map_err(|e| {
-            ExecutorError::SerializationError(format!("Failed to get raw column: {}", e))
-        })?;
+        let type_name = row.columns()[i].type_info().name().to_lowercase();
 
-        let type_name = raw_column.postgres_type().name();
-
-        match type_name {
+        match type_name.as_str() {
             "int2" | "int4" | "int8" => {
                 match row.try_get::<Option<i64>, _>(i) {
                     Ok(Some(v)) => Ok(json!(v)),
@@ -221,50 +219,38 @@ impl QueryExecutor {
 mod tests {
     use super::*;
 
+    fn check_has_limit(sql: &str) -> bool {
+        use sqlparser::dialect::PostgreSqlDialect;
+        use sqlparser::parser::Parser;
+
+        let dialect = PostgreSqlDialect {};
+        if let Ok(statements) = Parser::parse_sql(&dialect, sql) {
+            if let Some(sqlparser::ast::Statement::Query(query)) = statements.first() {
+                return query.limit_clause.is_some();
+            }
+        }
+        false
+    }
+
     #[test]
     fn test_has_limit_clause_with_limit() {
-        let executor = QueryExecutor::new(
-            sqlx::postgres::PgPoolOptions::new().max_connections(1),
-            1000,
-            30,
-            false,
-        );
-
-        assert!(executor.has_limit_clause("SELECT * FROM users LIMIT 10"));
-        assert!(executor.has_limit_clause("SELECT * FROM users LIMIT 10 OFFSET 20"));
+        assert!(check_has_limit("SELECT * FROM users LIMIT 10"));
+        assert!(check_has_limit("SELECT * FROM users LIMIT 10 OFFSET 20"));
     }
 
     #[test]
     fn test_has_limit_clause_without_limit() {
-        let executor = QueryExecutor::new(
-            sqlx::postgres::PgPoolOptions::new().max_connections(1),
-            1000,
-            30,
-            false,
-        );
-
-        assert!(!executor.has_limit_clause("SELECT * FROM users"));
-        assert!(!executor.has_limit_clause("SELECT * FROM users WHERE id = 1"));
+        assert!(!check_has_limit("SELECT * FROM users"));
+        assert!(!check_has_limit("SELECT * FROM users WHERE id = 1"));
     }
 
     #[test]
     fn test_has_limit_clause_with_subquery() {
-        let executor = QueryExecutor::new(
-            sqlx::postgres::PgPoolOptions::new().max_connections(1),
-            1000,
-            30,
-            false,
-        );
-
         // Outer query has limit
-        assert!(executor.has_limit_clause(
-            "SELECT * FROM (SELECT * FROM users) AS u LIMIT 5"
-        ));
+        assert!(check_has_limit("SELECT * FROM (SELECT * FROM users) AS u LIMIT 5"));
 
         // No limit on outer query
-        assert!(!executor.has_limit_clause(
-            "SELECT * FROM (SELECT * FROM users LIMIT 5) AS u"
-        ));
+        assert!(!check_has_limit("SELECT * FROM (SELECT * FROM users LIMIT 5) AS u"));
     }
 
     #[test]

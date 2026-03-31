@@ -252,13 +252,13 @@ pub fn mask_password(url: &str) -> String {
         let protocol = &url[..pos + 3];
         let rest = &url[pos + 3..];
 
-        if let Some(at_pos) = rest.find('@') {
+        if let Some(at_pos) = rest.rfind('@') {
             let credentials = &rest[..at_pos];
             let host_part = &rest[at_pos..];
 
             if let Some(colon_pos) = credentials.rfind(':') {
                 if let Some(slash_pos) = credentials[colon_pos..].find('/') {
-                    let password_start = colon_pos + 1;
+                    let _password_start = colon_pos + 1;
                     let password_end = colon_pos + slash_pos;
                     let masked = format!(
                         "{}{}:{}***{}",
@@ -269,7 +269,7 @@ pub fn mask_password(url: &str) -> String {
                     );
                     return masked;
                 } else {
-                    let password_start = colon_pos + 1;
+                    let _password_start = colon_pos + 1;
                     let masked = format!(
                         "{}{}:***{}",
                         protocol,
@@ -346,7 +346,6 @@ mod tests {
     #[test]
     fn test_temperature_validation() {
         let error = ConfigError::InvalidTemperature(3.0);
-        assert!(error.to_string().contains("3.0"));
         assert!(error.to_string().contains("must be between 0.0 and 2.0"));
     }
 

@@ -110,10 +110,10 @@ graph TD
 7. 若发现 crate 名称/版本有误，立即修正 `Cargo.toml` 并记录实际可用版本
 
 **验收标准**：
-- [ ] `cargo check` 无错误
-- [ ] 所有模块文件已创建
-- [ ] 依赖版本正确，编译通过
-- [ ] 依赖探针验证通过（每个关键依赖的最小示例可编译运行）
+- [x] `cargo check` 无错误
+- [x] 所有模块文件已创建
+- [x] 依赖版本正确，编译通过
+- [x] 依赖探针验证通过（每个关键依赖的最小示例可编译运行）
 
 **关键注意**：
 - `rmcp` 需要启用 `server`, `transport-io`, `macros`, `schemars` features
@@ -210,16 +210,16 @@ impl AppConfig {
 ```
 
 **验收标准**：
-- [ ] 仅 CLI 参数能正确加载
-- [ ] 仅 TOML 文件能正确加载
-- [ ] 仅环境变量能正确加载（`PG_MCP_DATABASE_URL` 等）
-- [ ] CLI 参数覆盖 TOML 文件值
-- [ ] 环境变量覆盖 TOML 文件值
-- [ ] CLI 参数覆盖环境变量值
-- [ ] 缺少必要配置时返回清晰错误
-- [ ] `excluded_tables` 和 `allowed_tables` 默认为空 Vec
-- [ ] `prompt_budget` 默认为 8000
-- [ ] `metadata_refresh_secs` 默认为 0
+- [x] 仅 CLI 参数能正确加载
+- [x] 仅 TOML 文件能正确加载
+- [x] 仅环境变量能正确加载（`PG_MCP_DATABASE_URL` 等）
+- [x] CLI 参数覆盖 TOML 文件值
+- [x] 环境变量覆盖 TOML 文件值
+- [x] CLI 参数覆盖环境变量值
+- [x] 缺少必要配置时返回清晰错误
+- [x] `excluded_tables` 和 `allowed_tables` 默认为空 Vec
+- [x] `prompt_budget` 默认为 8000
+- [x] `metadata_refresh_secs` 默认为 0
 
 ---
 
@@ -307,14 +307,14 @@ mod tests {
 ```
 
 **验收标准**：
-- [ ] 所有通过的测试用例通过
-- [ ] 所有拒绝的测试用例被正确拒绝
-- [ ] 错误信息以固定前缀标识类型：`"安全校验失败: "`（语句类型）、`"表访问被拒绝: "`（表控制）
-- [ ] 错误信息包含被拒绝的具体原因和原始 SQL 片段
-- [ ] 空 SQL 和多语句被拒绝
-- [ ] `allowed_tables` 非空时，查询未授权表返回错误
-- [ ] `excluded_tables` 中的表在 allowed_tables 和查询中均被拒绝
-- [ ] 表名提取覆盖 FROM、JOIN、CTE、子查询中的表引用
+- [x] 所有通过的测试用例通过
+- [x] 所有拒绝的测试用例被正确拒绝
+- [x] 错误信息以固定前缀标识类型：`"安全校验失败: "`（语句类型）、`"表访问被拒绝: "`（表控制）
+- [x] 错误信息包含被拒绝的具体原因和原始 SQL 片段
+- [x] 空 SQL 和多语句被拒绝
+- [x] `allowed_tables` 非空时，查询未授权表返回错误
+- [x] `excluded_tables` 中的表在 allowed_tables 和查询中均被拒绝
+- [x] 表名提取覆盖 FROM、JOIN、CTE、子查询中的表引用
 
 ---
 
@@ -365,13 +365,13 @@ impl MetadataCache {
   5. 遍历时跳过 `excluded_tables` 中的表
 
 **验收标准**：
-- [ ] 能正确加载表、列、主键、索引、视图信息
-- [ ] 相关表检索：包含表名的问题能匹配到对应表
-- [ ] 相关表检索：包含列名的问题能匹配到对应表
-- [ ] 无匹配时返回所有表
-- [ ] excluded_tables 中的表不出现在 LLM context 中
-- [ ] prompt_budget 超出时截断并显示提示
-- [ ] 注释不包含在格式化输出中
+- [x] 能正确加载表、列、主键、索引、视图信息
+- [x] 相关表检索：包含表名的问题能匹配到对应表
+- [x] 相关表检索：包含列名的问题能匹配到对应表
+- [x] 无匹配时返回所有表
+- [x] excluded_tables 中的表不出现在 LLM context 中
+- [x] prompt_budget 超出时截断并显示提示
+- [x] 注释不包含在格式化输出中
 
 ---
 
@@ -453,15 +453,15 @@ pub struct QueryResult {
 - 错误清洗在 `debug=false` 时将数据库错误替换为通用提示
 
 **验收标准**：
-- [ ] READ ONLY 事务中执行查询
-- [ ] 无 LIMIT 的 SQL 被子查询包裹方式追加 LIMIT
-- [ ] 已有 LIMIT 的 SQL 不被修改（AST 检测）
-- [ ] UNION / CTE / 子查询 SQL 的 LIMIT 保护正确（不误判子查询中的 LIMIT）
-- [ ] 行数达到 max_rows 时 truncated = true
-- [ ] integer/float/bool/jsonb 类型正确序列化为对应 JSON 类型（非字符串包裹）
-- [ ] timestamp/uuid/未知类型回退为字符串序列化
-- [ ] debug=false 时错误被清洗
-- [ ] debug=true 时返回原始错误
+- [x] READ ONLY 事务中执行查询
+- [x] 无 LIMIT 的 SQL 被子查询包裹方式追加 LIMIT
+- [x] 已有 LIMIT 的 SQL 不被修改（AST 检测）
+- [x] UNION / CTE / 子查询 SQL 的 LIMIT 保护正确（不误判子查询中的 LIMIT）
+- [x] 行数达到 max_rows 时 truncated = true
+- [x] integer/float/bool/jsonb 类型正确序列化为对应 JSON 类型（非字符串包裹）
+- [x] timestamp/uuid/未知类型回退为字符串序列化
+- [x] debug=false 时错误被清洗
+- [x] debug=true 时返回原始错误
 
 ---
 
@@ -503,13 +503,13 @@ impl LlmClient {
 - reqwest 超时设置：建议 60 秒（覆盖 LLM 响应时间）
 
 **验收标准**：
-- [ ] extract_sql 正确处理 markdown 代码块
-- [ ] extract_sql 正确处理裸 SQL
-- [ ] last_error=None 时生成普通 prompt
-- [ ] last_error=Some 时生成带错误反馈的 prompt
-- [ ] API 错误返回格式为 `"LLM API 错误 ({status}): {body}"`
-- [ ] extract_sql 处理空白包裹的 SQL 后不含前后换行
-- [ ] API 超时返回 `"LLM 请求超时 ({duration:?})"` 格式的错误
+- [x] extract_sql 正确处理 markdown 代码块
+- [x] extract_sql 正确处理裸 SQL
+- [x] last_error=None 时生成普通 prompt
+- [x] last_error=Some 时生成带错误反馈的 prompt
+- [x] API 错误返回格式为 `"LLM API 错误 ({status}): {body}"`
+- [x] extract_sql 处理空白包裹的 SQL 后不含前后换行
+- [x] API 超时返回 `"LLM 请求超时 ({duration:?})"` 格式的错误
 
 ---
 
@@ -553,9 +553,9 @@ impl PgMcpServer {
 - `tool_handler` 宏自动生成 `call_tool` 和 `list_tools` 实现
 
 **验收标准**：
-- [ ] `cargo build` 编译通过
-- [ ] tool 参数 schema 正确生成（通过 MCP list_tools 验证）
-- [ ] query 工具可被 MCP 客户端调用
+- [x] `cargo build` 编译通过
+- [x] tool 参数 schema 正确生成（通过 MCP list_tools 验证）
+- [x] query 工具可被 MCP 客户端调用
 
 ---
 
@@ -602,12 +602,12 @@ if let Some(handle) = refresh_handle {
 ```
 
 **验收标准**：
-- [ ] 配置加载成功并打印日志（密码已 mask）
-- [ ] 数据库连接失败时终止并打印错误
-- [ ] 元数据加载成功并打印表/视图数量
-- [ ] metadata_refresh_secs > 0 时启动后台刷新
-- [ ] MCP Server 成功启动并等待连接
-- [ ] 进程退出时后台刷新任务被正确终止（通过 JoinHandle::abort）
+- [x] 配置加载成功并打印日志（密码已 mask）
+- [x] 数据库连接失败时终止并打印错误
+- [x] 元数据加载成功并打印表/视图数量
+- [x] metadata_refresh_secs > 0 时启动后台刷新
+- [x] MCP Server 成功启动并等待连接
+- [x] 进程退出时后台刷新任务被正确终止（通过 JoinHandle::abort）
 
 ---
 
@@ -628,7 +628,7 @@ if let Some(handle) = refresh_handle {
 | `executor` | apply_limit: 无 LIMIT 追加、有 LIMIT 不追加、truncated 计算、**子查询包裹方式对 UNION/CTE 的处理**、**类型分派（int/float/bool/jsonb/null）正确序列化** |
 
 **验收标准**：
-- [ ] `cargo test` 全部通过
+- [x] `cargo test` 全部通过
 - [ ] 测试覆盖率 > 80%（核心逻辑）
 
 ---
@@ -680,9 +680,9 @@ if let Some(handle) = refresh_handle {
 3. 手动测试完整的 MCP 集成流程（Claude Code 或 Cursor）
 
 **验收标准**：
-- [ ] `cargo build --release` 成功
-- [ ] config.example.toml 所有配置项有注释说明
-- [ ] 能与 MCP 客户端正常通信
+- [x] `cargo build --release` 成功
+- [x] config.example.toml 所有配置项有注释说明
+- [x] 能与 MCP 客户端正常通信
 
 ---
 

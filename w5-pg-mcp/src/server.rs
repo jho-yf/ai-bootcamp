@@ -4,11 +4,11 @@ use crate::llm::LlmClient;
 use crate::metadata::MetadataCache;
 use crate::validator::SqlValidator;
 use rmcp::handler::server::router::tool::ToolRouter;
-use rmcp::handler::server::tool::Parameters;
-use rmcp::model::{ServerInfo, ServerCapabilities, Implementation};
-use rmcp::{ServerHandler, ServiceExt};
+use rmcp::handler::server::wrapper::Parameters;
+use rmcp::model::{ServerInfo, ServerCapabilities};
+use rmcp::{ServerHandler, tool, tool_handler, tool_router};
 use schemars::JsonSchema;
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
 use std::sync::Arc;
 use tracing::{error, info};
 
@@ -32,7 +32,6 @@ pub struct QueryParams {
 
 #[tool_router]
 impl PgMcpServer {
-    #[tool_router]
     pub fn new(
         config: Arc<AppConfig>,
         metadata: Arc<MetadataCache>,
@@ -41,7 +40,7 @@ impl PgMcpServer {
         validator: SqlValidator,
     ) -> Self {
         Self {
-            tool_router: ToolRouter::new(),
+            tool_router: Self::tool_router(),
             config,
             metadata,
             llm,
@@ -54,7 +53,8 @@ impl PgMcpServer {
         name = "query",
         description = "Execute a natural language query against the PostgreSQL database and return results"
     )]
-    async fn query(&self, Parameters(params): Parameters<QueryParams>) -> Result<String, rmcp::ErrorData> {
+    async fn query(&self, params: Parameters<QueryParams>) -> Result<String, rmcp::ErrorData> {
+        let params = params.0;
         info!(question = %params.question, "Received query request");
 
         // Get database context for the LLM
@@ -165,17 +165,13 @@ impl PgMcpServer {
 #[tool_handler]
 impl ServerHandler for PgMcpServer {
     fn get_info(&self) -> ServerInfo {
-        ServerInfo {
-            name: "pg-mcp".to_string(),
-            version: env!("CARGO_PKG_VERSION").to_string(),
-            capabilities: ServerCapabilities::default(),
-            instructions: Some("PostgreSQL MCP Server - Execute natural language queries against PostgreSQL databases. \
-                Use the 'query' tool to ask questions about your data.".to_string()),
-            implementation: Some(Implementation {
-                name: "pg-mcp".to_string(),
-                version: env!("CARGO_PKG_VERSION").to_string(),
-            }),
-        }
+        ServerInfo::new(ServerCapabilities::builder().enable_tools().build())
+            .with_server_info(rmcp::model::Implementation::new(
+                "pg-mcp",
+                env!("CARGO_PKG_VERSION"),
+            ))
+            .with_instructions("PostgreSQL MCP Server - Execute natural language queries against PostgreSQL databases. \
+                Use the 'query' tool to ask questions about your data.".to_string())
     }
 }
 
@@ -193,7 +189,7 @@ mod tests {
     }
 
     #[test]
-    fn test_server_info() {
+    fn test_server_config_values() {
         let config = Arc::new(AppConfig {
             database: crate::config::DatabaseConfig {
                 url: "postgresql://localhost/test".to_string(),
@@ -217,7 +213,6 @@ mod tests {
             },
         });
 
-        // We can't fully test server creation without a pool, but we can verify the types
         assert_eq!(config.server.max_rows, 1000);
     }
 }

@@ -1,6 +1,5 @@
 use sqlx::postgres::PgPool;
 use std::collections::HashSet;
-use std::sync::Arc;
 use thiserror::Error;
 use tokio::sync::RwLock;
 use tracing::{debug, info};
@@ -51,6 +50,7 @@ pub enum MetadataError {
     ConnectionError(String),
 }
 
+#[derive(Debug)]
 pub struct MetadataCache {
     pool: PgPool,
     schema: String,
@@ -62,10 +62,10 @@ impl MetadataCache {
     pub fn new(pool: PgPool, schema: String, excluded_tables: HashSet<String>) -> Self {
         Self {
             pool,
-            schema,
+            schema: schema.clone(),
             excluded_tables,
             inner: RwLock::new(DatabaseMetadata {
-                schema_name: schema.clone(),
+                schema_name: schema,
                 tables: Vec::new(),
                 views: Vec::new(),
             }),
@@ -243,14 +243,13 @@ impl MetadataCache {
         Ok(())
     }
 
-    pub fn start_refresh_loop(&self, interval_secs: u64) -> tokio::task::JoinHandle<()> {
-        let cache = Arc::new(self.clone());
+    pub fn start_refresh_loop(self: std::sync::Arc<Self>, interval_secs: u64) -> tokio::task::JoinHandle<()> {
         tokio::spawn(async move {
             let mut interval = tokio::time::interval(tokio::time::Duration::from_secs(interval_secs));
             loop {
                 interval.tick().await;
                 debug!("Refreshing metadata cache");
-                if let Err(e) = cache.load().await {
+                if let Err(e) = self.load().await {
                     tracing::error!(error = %e, "Failed to refresh metadata");
                 }
             }
@@ -345,7 +344,7 @@ impl MetadataCache {
             for idx in &table.indexes {
                 let unique = if idx.is_unique { "UNIQUE " } else { "" };
                 result.push_str(&format!(
-                    "  {} {}({})\n",
+                    "  {}{}({})\n",
                     unique,
                     idx.index_name,
                     idx.columns.join(", ")
