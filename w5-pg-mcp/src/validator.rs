@@ -1,4 +1,4 @@
-use sqlparser::ast::{SetExpr, Statement, Query as SqlQuery};
+use sqlparser::ast::{SetExpr, Statement, Query as SqlQuery, Expr};
 use sqlparser::dialect::PostgreSqlDialect;
 use sqlparser::parser::Parser;
 use std::collections::HashSet;
@@ -117,6 +117,16 @@ impl SqlValidator {
             SetExpr::Select(select) => {
                 // Check FROM clause tables
                 self.validate_from(&select.from)?;
+
+                // Check WHERE clause for subqueries referencing tables
+                if let Some(selection) = &select.selection {
+                    self.validate_expr(selection)?;
+                }
+
+                // Check SELECT list for subqueries
+                for select_item in &select.projection {
+                    self.validate_select_item(select_item)?;
+                }
             }
             SetExpr::Query(query) => {
                 self.validate_query(query)?;
@@ -158,6 +168,93 @@ impl SqlValidator {
     fn validate_from(&self, from: &[sqlparser::ast::TableWithJoins]) -> Result<(), ValidationError> {
         for table_with_joins in from {
             self.validate_table_with_joins(table_with_joins)?;
+        }
+        Ok(())
+    }
+
+    fn validate_expr(&self, expr: &Expr) -> Result<(), ValidationError> {
+        match expr {
+            // Expressions that contain subqueries - must validate recursively
+            Expr::Subquery(query) => {
+                self.validate_query(query)?;
+            }
+            Expr::Exists { subquery, .. } => {
+                self.validate_query(subquery)?;
+            }
+            Expr::InSubquery { subquery, .. } => {
+                self.validate_query(subquery)?;
+            }
+            // Composite expressions - recurse into children
+            Expr::BinaryOp { left, right, .. } => {
+                self.validate_expr(left)?;
+                self.validate_expr(right)?;
+            }
+            Expr::UnaryOp { expr, .. } => {
+                self.validate_expr(expr)?;
+            }
+            Expr::Nested(expr) => {
+                self.validate_expr(expr)?;
+            }
+            Expr::IsNull(expr)
+            | Expr::IsNotNull(expr)
+            | Expr::IsTrue(expr)
+            | Expr::IsNotTrue(expr)
+            | Expr::IsFalse(expr)
+            | Expr::IsNotFalse(expr) => {
+                self.validate_expr(expr)?;
+            }
+            Expr::InList { expr, list, .. } => {
+                self.validate_expr(expr)?;
+                for item in list {
+                    self.validate_expr(item)?;
+                }
+            }
+            Expr::Between { expr, low, high, .. } => {
+                self.validate_expr(expr)?;
+                self.validate_expr(low)?;
+                self.validate_expr(high)?;
+            }
+            Expr::Cast { expr, .. } => {
+                self.validate_expr(expr)?;
+            }
+            Expr::Function(func) => {
+                match &func.args {
+                    sqlparser::ast::FunctionArguments::List(list) => {
+                        for arg in &list.args {
+                            match arg {
+                                sqlparser::ast::FunctionArg::Unnamed(
+                                    sqlparser::ast::FunctionArgExpr::Expr(e),
+                                )
+                                | sqlparser::ast::FunctionArg::Named {
+                                    arg:
+                                        sqlparser::ast::FunctionArgExpr::Expr(e),
+                                    ..
+                                } => {
+                                    self.validate_expr(e)?;
+                                }
+                                _ => {}
+                            }
+                        }
+                    }
+                    sqlparser::ast::FunctionArguments::Subquery(query) => {
+                        self.validate_query(query)?;
+                    }
+                    _ => {}
+                }
+            }
+            // Leaf expressions - no subqueries possible
+            _ => {}
+        }
+        Ok(())
+    }
+
+    fn validate_select_item(&self, item: &sqlparser::ast::SelectItem) -> Result<(), ValidationError> {
+        match item {
+            sqlparser::ast::SelectItem::UnnamedExpr(expr)
+            | sqlparser::ast::SelectItem::ExprWithAlias { expr, .. } => {
+                self.validate_expr(expr)?;
+            }
+            sqlparser::ast::SelectItem::QualifiedWildcard(..) | sqlparser::ast::SelectItem::Wildcard(..) => {}
         }
         Ok(())
     }
@@ -457,5 +554,59 @@ mod tests {
         let validator = create_validator();
         let result = validator.validate("@#$%^&");
         assert!(matches!(result, Err(ValidationError::ParseError(_))));
+    }
+
+    #[test]
+    fn test_subquery_in_where_blocks_unauthorized_table() {
+        let validator = create_validator_with_allowed(vec!["users"]);
+        let result = validator.validate(
+            "SELECT * FROM users WHERE id IN (SELECT user_id FROM orders)"
+        );
+        assert!(matches!(result, Err(ValidationError::TableAccessDenied(_))));
+    }
+
+    #[test]
+    fn test_exists_subquery_blocks_unauthorized_table() {
+        let validator = create_validator_with_allowed(vec!["users"]);
+        let result = validator.validate(
+            "SELECT * FROM users WHERE EXISTS (SELECT 1 FROM orders WHERE orders.user_id = users.id)"
+        );
+        assert!(matches!(result, Err(ValidationError::TableAccessDenied(_))));
+    }
+
+    #[test]
+    fn test_scalar_subquery_in_select() {
+        let validator = create_validator_with_allowed(vec!["users"]);
+        let result = validator.validate(
+            "SELECT (SELECT COUNT(*) FROM orders) AS order_count FROM users"
+        );
+        assert!(matches!(result, Err(ValidationError::TableAccessDenied(_))));
+    }
+
+    #[test]
+    fn test_subquery_with_authorized_table_passes() {
+        let validator = create_validator_with_allowed(vec!["users", "orders"]);
+        let result = validator.validate(
+            "SELECT * FROM users WHERE id IN (SELECT user_id FROM orders)"
+        );
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_cte_with_select_only_passes() {
+        let validator = create_validator();
+        let result = validator.validate(
+            "WITH active AS (SELECT * FROM users WHERE active = true) SELECT * FROM active"
+        );
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_nested_subquery_blocks_unauthorized() {
+        let validator = create_validator_with_allowed(vec!["users"]);
+        let result = validator.validate(
+            "SELECT * FROM users WHERE id IN (SELECT user_id FROM orders WHERE product_id IN (SELECT id FROM products))"
+        );
+        assert!(matches!(result, Err(ValidationError::TableAccessDenied(_))));
     }
 }

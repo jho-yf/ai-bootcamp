@@ -175,14 +175,35 @@ impl QueryExecutor {
         let type_name = row.columns()[i].type_info().name().to_lowercase();
 
         match type_name.as_str() {
-            "int2" | "int4" | "int8" => {
+            "int2" => {
+                match row.try_get::<Option<i16>, _>(i) {
+                    Ok(Some(v)) => Ok(json!(v as i64)),
+                    Ok(None) => Ok(Value::Null),
+                    Err(_) => Ok(Value::Null),
+                }
+            }
+            "int4" => {
+                match row.try_get::<Option<i32>, _>(i) {
+                    Ok(Some(v)) => Ok(json!(v as i64)),
+                    Ok(None) => Ok(Value::Null),
+                    Err(_) => Ok(Value::Null),
+                }
+            }
+            "int8" => {
                 match row.try_get::<Option<i64>, _>(i) {
                     Ok(Some(v)) => Ok(json!(v)),
                     Ok(None) => Ok(Value::Null),
                     Err(_) => Ok(Value::Null),
                 }
             }
-            "float4" | "float8" => {
+            "float4" => {
+                match row.try_get::<Option<f32>, _>(i) {
+                    Ok(Some(v)) => Ok(json!(v as f64)),
+                    Ok(None) => Ok(Value::Null),
+                    Err(_) => Ok(Value::Null),
+                }
+            }
+            "float8" => {
                 match row.try_get::<Option<f64>, _>(i) {
                     Ok(Some(v)) => Ok(json!(v)),
                     Ok(None) => Ok(Value::Null),
@@ -201,6 +222,20 @@ impl QueryExecutor {
                     Ok(Some(v)) => Ok(v),
                     Ok(None) => Ok(Value::Null),
                     Err(_) => Ok(Value::Null),
+                }
+            }
+            "numeric" => {
+                match row.try_get::<Option<rust_decimal::Decimal>, _>(i) {
+                    Ok(Some(v)) => Ok(json!(v.to_string())),
+                    Ok(None) => Ok(Value::Null),
+                    Err(_) => {
+                        // Fallback to string
+                        match row.try_get::<Option<String>, _>(i) {
+                            Ok(Some(v)) => Ok(json!(v)),
+                            Ok(None) => Ok(Value::Null),
+                            Err(_) => Ok(Value::Null),
+                        }
+                    }
                 }
             }
             _ => {

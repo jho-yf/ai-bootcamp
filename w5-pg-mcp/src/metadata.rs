@@ -72,6 +72,18 @@ impl MetadataCache {
         }
     }
 
+    /// Create a cache pre-loaded with metadata (for testing)
+    pub fn from_metadata(metadata: DatabaseMetadata) -> Self {
+        let pool = PgPool::connect_lazy("postgresql://localhost/nonexistent")
+            .expect("lazy connect should not fail");
+        Self {
+            pool,
+            schema: metadata.schema_name.clone(),
+            excluded_tables: HashSet::new(),
+            inner: RwLock::new(metadata),
+        }
+    }
+
     pub async fn load(&self) -> Result<(), MetadataError> {
         info!(schema = %self.schema, "Loading database metadata");
 
@@ -416,5 +428,120 @@ mod tests {
         assert_eq!(metadata.schema_name, "public");
         assert!(metadata.tables.is_empty());
         assert!(metadata.views.is_empty());
+    }
+
+    #[tokio::test]
+    async fn test_relevant_context_table_name_match() {
+        let metadata = DatabaseMetadata {
+            schema_name: "public".to_string(),
+            tables: vec![
+                TableInfo {
+                    table_name: "users".to_string(),
+                    columns: vec![ColumnInfo {
+                        column_name: "id".to_string(),
+                        data_type: "integer".to_string(),
+                        is_nullable: false,
+                        column_default: None,
+                        comment: None,
+                    }],
+                    primary_keys: vec![],
+                    indexes: vec![],
+                },
+                TableInfo {
+                    table_name: "orders".to_string(),
+                    columns: vec![],
+                    primary_keys: vec![],
+                    indexes: vec![],
+                },
+            ],
+            views: vec![],
+        };
+        let cache = MetadataCache::from_metadata(metadata);
+
+        let ctx = cache.get_relevant_context("查询 users 表", 10000).await;
+        // "users" should appear before "orders" due to keyword match scoring
+        let users_pos = ctx.find("Table: users").unwrap_or(usize::MAX);
+        let orders_pos = ctx.find("Table: orders").unwrap_or(usize::MAX);
+        assert!(users_pos < orders_pos, "users table should rank higher than orders");
+    }
+
+    #[tokio::test]
+    async fn test_relevant_context_column_name_match() {
+        let metadata = DatabaseMetadata {
+            schema_name: "public".to_string(),
+            tables: vec![
+                TableInfo {
+                    table_name: "users".to_string(),
+                    columns: vec![ColumnInfo {
+                        column_name: "email".to_string(),
+                        data_type: "text".to_string(),
+                        is_nullable: true,
+                        column_default: None,
+                        comment: None,
+                    }],
+                    primary_keys: vec![],
+                    indexes: vec![],
+                },
+            ],
+            views: vec![],
+        };
+        let cache = MetadataCache::from_metadata(metadata);
+
+        let ctx = cache.get_relevant_context("查询 email 字段", 10000).await;
+        assert!(ctx.contains("Table: users"));
+    }
+
+    #[tokio::test]
+    async fn test_relevant_context_no_match_returns_all() {
+        let metadata = DatabaseMetadata {
+            schema_name: "public".to_string(),
+            tables: vec![
+                TableInfo {
+                    table_name: "users".to_string(),
+                    columns: vec![],
+                    primary_keys: vec![],
+                    indexes: vec![],
+                },
+                TableInfo {
+                    table_name: "orders".to_string(),
+                    columns: vec![],
+                    primary_keys: vec![],
+                    indexes: vec![],
+                },
+            ],
+            views: vec![],
+        };
+        let cache = MetadataCache::from_metadata(metadata);
+
+        let ctx = cache.get_relevant_context("some random question", 10000).await;
+        assert!(ctx.contains("Table: users"));
+        assert!(ctx.contains("Table: orders"));
+    }
+
+    #[tokio::test]
+    async fn test_relevant_context_budget_truncation() {
+        let metadata = DatabaseMetadata {
+            schema_name: "public".to_string(),
+            tables: vec![
+                TableInfo {
+                    table_name: "users".to_string(),
+                    columns: vec![ColumnInfo {
+                        column_name: "id".to_string(),
+                        data_type: "integer".to_string(),
+                        is_nullable: false,
+                        column_default: None,
+                        comment: None,
+                    }],
+                    primary_keys: vec![],
+                    indexes: vec![],
+                },
+            ],
+            views: vec![],
+        };
+        let cache = MetadataCache::from_metadata(metadata);
+
+        // Very small budget should truncate
+        let ctx = cache.get_relevant_context("users", 20).await;
+        assert!(ctx.len() <= 200, "Context should be truncated");
     }
 }

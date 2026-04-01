@@ -629,7 +629,7 @@ if let Some(handle) = refresh_handle {
 
 **验收标准**：
 - [x] `cargo test` 全部通过
-- [ ] 测试覆盖率 > 80%（核心逻辑）
+- [x] 测试覆盖率 > 80%（核心逻辑）
 
 ---
 
@@ -657,13 +657,13 @@ if let Some(handle) = refresh_handle {
 **注意**：由于 LLM API 需要 API Key 且有成本，集成测试中用 mock 替代 LLM 调用。
 
 **验收标准**：
-- [ ] 元数据加载测试通过
-- [ ] 端到端查询测试通过
-- [ ] READ ONLY 保护测试通过
-- [ ] MCP handshake 成功
-- [ ] MCP list_tools 返回正确的 schema
+- [x] 元数据加载测试通过
+- [x] 端到端查询测试通过
+- [x] READ ONLY 保护测试通过
+- [x] MCP handshake 成功
+- [x] MCP list_tools 返回正确的 schema
 - [ ] 重试分支测试通过（一次失败后二次成功）
-- [ ] 错误码映射正确（validator → invalid_params, executor → internal_error）
+- [x] 错误码映射正确（validator → invalid_params, executor → internal_error）
 
 ---
 

@@ -1,22 +1,16 @@
-mod config;
-mod executor;
-mod llm;
-mod metadata;
-mod server;
-mod validator;
+use pg_mcp::config::AppConfig;
+use pg_mcp::executor::QueryExecutor;
+use pg_mcp::llm::LlmClient;
+use pg_mcp::metadata::MetadataCache;
+use pg_mcp::server::PgMcpServer;
+use pg_mcp::validator::SqlValidator;
 
-use config::AppConfig;
-use executor::QueryExecutor;
-use llm::LlmClient;
-use metadata::MetadataCache;
 use rmcp::ServiceExt;
-use server::PgMcpServer;
 use sqlx::postgres::PgPoolOptions;
 use std::collections::HashSet;
 use std::sync::Arc;
 use std::time::Duration;
 use tracing::info;
-use validator::SqlValidator;
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
@@ -32,7 +26,7 @@ async fn main() -> anyhow::Result<()> {
     let config = AppConfig::load()?;
 
     // Log configuration with masked password
-    let masked_url = config::mask_password(&config.database.url);
+    let masked_url = pg_mcp::config::mask_password(&config.database.url);
     info!(
         database_url = %masked_url,
         database_schema = %config.database.schema,
