@@ -63,3 +63,7 @@ commit and 根据 @specs/w5/003-postgres-mcp-impl-plan.md 实现剩下所有 tas
 ## 测试 prompt 构建
 
 根据 @w5-pg-mcp/fixtures/ ,假设用户要用自然语言提问，然后 pg-mcp 来生成相应的 sql。帮我生成一个 test-prompts.md 的文档，里面包含各种对数据库内部数据的简单到复杂的提问 
+
+## 自动化测试
+
+对于 @w5-pg-mcp, 将这个 mcp 添加到 @.claude 中，打开一个 claude code headless cli 选择 @@w5-pg-mcp/fixtures/test-prompts.md 下面的某些 query 来运行，查看是否调用了这个 mcp 以及结果是否符合预期

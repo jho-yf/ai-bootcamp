@@ -154,3 +154,7 @@ docker-compose.override.yml
 .cache/
 .parcel-cache/
 .turbo/
+
+# MCP 配置文件
+.mcp.json
+w5-pg-mcp/config.toml

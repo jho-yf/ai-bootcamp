@@ -51,11 +51,14 @@ impl QueryExecutor {
         let start = Instant::now();
         info!(sql = %sql, "Executing query");
 
+        // Strip trailing semicolons to avoid syntax errors when wrapping in subquery
+        let trimmed = sql.trim().trim_end_matches(';');
+
         // Check if SQL already has LIMIT clause
-        let final_sql = if self.has_limit_clause(sql) {
-            sql.to_string()
+        let final_sql = if self.has_limit_clause(trimmed) {
+            trimmed.to_string()
         } else {
-            format!("SELECT * FROM ({}) AS _subq LIMIT {}", sql, self.max_rows)
+            format!("SELECT * FROM ({}) AS _subq LIMIT {}", trimmed, self.max_rows)
         };
 
         debug!(final_sql = %final_sql, "Final SQL with LIMIT protection");
