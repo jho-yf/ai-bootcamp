@@ -885,7 +885,7 @@ SELECT
     p.patient_id,
     p.name AS patient_name,
     p.gender,
-    p.age,
+    EXTRACT(YEAR FROM AGE(p.birth_date)) AS age,
     d.dept_name,
     w.ward_name,
     b.bed_no,
@@ -908,7 +908,7 @@ WHERE a.discharge_date IS NULL;
 -- 医生今日排班视图
 CREATE VIEW v_doctor_schedule_today AS
 SELECT
-    s.id AS staff_id,
+    s.id,
     s.staff_id,
     s.name AS doctor_name,
     s.specialty,
@@ -993,8 +993,8 @@ CREATE VIEW v_patient_charges_summary AS
 SELECT
     p.patient_id,
     p.name AS patient_name,
-    COALESCE(c.visit_id, a.admission_no) AS encounter_no,
-    COALESCE(c.charge_category, '住院') AS charge_category,
+    COALESCE(a.admission_no, '门诊') AS encounter_no,
+    COALESCE(c.category, 'hospitalization')::charge_category AS charge_category,
     COUNT(ch.id) AS charge_count,
     SUM(ch.total_amount) AS total_charges,
     MAX(ch.charge_date) AS last_charge_date
@@ -1002,7 +1002,7 @@ FROM patients p
 LEFT JOIN charges ch ON p.id = ch.patient_id
 LEFT JOIN charge_items c ON ch.charge_item_id = c.id
 LEFT JOIN admissions a ON ch.admission_id = a.id
-GROUP BY p.patient_id, p.name, c.visit_id, a.admission_no, c.charge_category;
+GROUP BY p.patient_id, p.name, a.admission_no, c.category;
 
 -- 手术安排视图
 CREATE VIEW v_surgery_schedule AS
@@ -1262,7 +1262,7 @@ INSERT INTO registrations (registration_no, patient_id, department_id, doctor_id
     CASE ROW_NUMBER() OVER () WHEN 1 THEN 3 WHEN 2 THEN 3 WHEN 3 THEN 4 WHEN 4 THEN 5 WHEN 5 THEN 7 WHEN 6 THEN 2 ELSE 3 END,
     CASE ROW_NUMBER() OVER () WHEN 1 THEN 1 WHEN 2 THEN 2 WHEN 3 THEN 3 WHEN 4 THEN 4 WHEN 5 THEN 5 WHEN 6 THEN 9 ELSE 1 END,
     'outpatient',
-    CASE WHEN ROW_NUMBER() OVER () <= 2 THEN 'high' ELSE 'normal' END,
+    (CASE WHEN ROW_NUMBER() OVER () <= 2 THEN 'high' ELSE 'normal' END)::priority_level,
     15.00,
     'confirmed'
 FROM (SELECT id FROM patients LIMIT 15) p;
@@ -1285,7 +1285,7 @@ INSERT INTO admissions (admission_no, patient_id, department_id, ward_id, bed_id
         WHEN 5 THEN '2型糖尿病酮症酸中毒'
         ELSE '待查'
     END,
-    CASE WHEN ROW_NUMBER() OVER () <= 2 THEN 'critical' WHEN ROW_NUMBER() OVER () <= 4 THEN 'grade_2' ELSE 'grade_3' END,
+    (CASE WHEN ROW_NUMBER() OVER () <= 2 THEN 'critical' WHEN ROW_NUMBER() OVER () <= 4 THEN 'grade_2' ELSE 'grade_3' END)::nursing_level,
     5000.00,
     'admitted'
 FROM (SELECT id FROM patients WHERE id <= 10) p
@@ -1324,9 +1324,9 @@ INSERT INTO examination_requests (request_no, patient_id, visit_id, item_id, req
     v.id,
     CASE ROW_NUMBER() OVER () WHEN 1 THEN 2 WHEN 2 THEN 3 WHEN 3 THEN 5 WHEN 4 THEN 6 WHEN 5 THEN 7 ELSE 1 END,
     v.doctor_id,
-    CASE WHEN ROW_NUMBER() OVER () <= 3 THEN 'high' ELSE 'normal' END,
+    (CASE WHEN ROW_NUMBER() OVER () <= 3 THEN 'high' ELSE 'normal' END)::priority_level,
     '临床检查'
-FROM outpatient_visits v LIMIT 25;
+FROM (SELECT * FROM outpatient_visits LIMIT 25) v;
 
 -- 检验申请数据
 INSERT INTO laboratory_requests (request_no, patient_id, visit_id, test_id, requested_by, priority, clinical_diagnosis) SELECT
@@ -1335,9 +1335,9 @@ INSERT INTO laboratory_requests (request_no, patient_id, visit_id, test_id, requ
     v.id,
     CASE ROW_NUMBER() OVER () WHEN 1 THEN 1 WHEN 2 THEN 2 WHEN 3 THEN 3 WHEN 4 THEN 4 WHEN 5 THEN 5 ELSE 6 END,
     v.doctor_id,
-    CASE WHEN ROW_NUMBER() OVER () <= 4 THEN 'high' ELSE 'normal' END,
+    (CASE WHEN ROW_NUMBER() OVER () <= 4 THEN 'high' ELSE 'normal' END)::priority_level,
     '常规检查'
-FROM outpatient_visits v LIMIT 30;
+FROM (SELECT * FROM outpatient_visits LIMIT 30) v;
 
 -- 处方数据
 INSERT INTO prescriptions (prescription_no, patient_id, visit_id, prescribed_by, diagnosis, status) SELECT
@@ -1347,7 +1347,7 @@ INSERT INTO prescriptions (prescription_no, patient_id, visit_id, prescribed_by,
     v.doctor_id,
     v.preliminary_diagnosis,
     'pending'
-FROM outpatient_visits v WHERE ROW_NUMBER() OVER () <= 15;
+FROM (SELECT * FROM outpatient_visits LIMIT 15) v;
 
 -- 药品库存数据
 INSERT INTO medicine_inventory (medicine_id, batch_no, quantity, expiry_date, location) SELECT

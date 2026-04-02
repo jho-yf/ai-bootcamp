@@ -298,7 +298,7 @@ CREATE VIEW v_student_grades_summary AS
 SELECT
     s.student_id,
     s.name AS student_name,
-    c.class_name,
+    cls.class_name,
     sub.name AS subject,
     sub.code AS subject_code,
     e.name AS teacher_name,
@@ -309,6 +309,7 @@ SELECT
 FROM students s
 JOIN enrollments en ON en.student_id = s.id
 JOIN courses co ON en.course_id = co.id
+JOIN classes cls ON co.class_id = cls.id
 JOIN subjects sub ON co.subject_id = sub.id
 JOIN employees e ON co.teacher_id = e.id
 LEFT JOIN grades g ON g.student_id = s.id AND g.course_id = co.id
@@ -372,7 +373,7 @@ SELECT
     COUNT(DISTINCT sp.student_id) AS participant_count,
     STRING_AGG(DISTINCT c.class_name, ', ') AS participating_classes
 FROM events ev
-LEFT JOIN employee e ON ev.organizer = e.id
+LEFT JOIN employees e ON ev.organizer = e.id
 LEFT JOIN student_participations sp ON sp.event_id = ev.id
 LEFT JOIN students s ON sp.student_id = s.id
 LEFT JOIN classes c ON s.class_id = c.id
@@ -539,15 +540,15 @@ INSERT INTO enrollments (student_id, course_id) SELECT s.id, c.id FROM students 
 
 -- 出勤数据 (最近一周)
 INSERT INTO attendance (student_id, course_id, attendance_date, status)
-SELECT e.student_id, e.course_id, CURRENT_DATE - (RANDOM() * 7)::INTEGER::DATE,
-       CASE WHEN RANDOM() < 0.85 THEN 'present' WHEN RANDOM() < 0.92 THEN 'late' WHEN RANDOM() < 0.97 THEN 'excused' ELSE 'absent' END
+SELECT e.student_id, e.course_id, CURRENT_DATE - (RANDOM() * 7)::INTEGER * INTERVAL '1 day',
+       (CASE WHEN RANDOM() < 0.85 THEN 'present' WHEN RANDOM() < 0.92 THEN 'late' WHEN RANDOM() < 0.97 THEN 'excused' ELSE 'absent' END)::attendance_status
 FROM enrollments e;
 
 -- 成绩数据
 INSERT INTO grades (student_id, course_id, exam_type, exam_date, score, letter_grade)
 SELECT e.student_id, e.course_id,
        CASE WHEN RANDOM() < 0.33 THEN '月考' WHEN RANDOM() < 0.66 THEN '期中考' ELSE '单元测验' END,
-       CURRENT_DATE - (RANDOM() * 60)::INTEGER::DATE,
+       CURRENT_DATE - (RANDOM() * 60)::INTEGER * INTERVAL '1 day',
        (60 + RANDOM() * 40)::DECIMAL(5,2),
        CASE WHEN (60 + RANDOM() * 40) >= 90 THEN 'A' WHEN (60 + RANDOM() * 40) >= 80 THEN 'B' WHEN (60 + RANDOM() * 40) >= 70 THEN 'C' WHEN (60 + RANDOM() * 40) >= 60 THEN 'D' ELSE 'F' END
 FROM enrollments e;

@@ -67,3 +67,17 @@ commit and 根据 @specs/w5/003-postgres-mcp-impl-plan.md 实现剩下所有 tas
 ## 自动化测试
 
 对于 @w5-pg-mcp, 将这个 mcp 添加到 @.claude 中，打开一个 claude code headless cli 选择 @@w5-pg-mcp/fixtures/test-prompts.md 下面的某些 query 来运行，查看是否调用了这个 mcp 以及结果是否符合预期
+
+## Skills
+
+在当前项目下创建一个 Skill，要求：
+
+1. 通过 psql（host = "localhost"， port = 15432， user = "pgmcp"， password = "pgmcp_test"） 探索本地的几个数据库 pg_mcp_small, pg_mcp_medium, pg_mcp_large, 了解这些数据对应的 table/view/index/types 等 schema，每个数据一个 md 文件作为 skill 的 reference
+   
+2. 用户可以给特定自然语言描述的查询的需求，skill 根据用户输入找到相应的数据库的 reference 文件，然后根据 reference 文件生成对应的 sql 或者查询结果。SQL 只允许查询语句，不允许修改、删除、插入等写操作，不能有任何安全漏洞比如 SQL 注入，不能有任何危险操作比如 sleep ，不能有任何的敏感信息比如 ApiKey 等
+
+3. 使用 psql 测试这个 SQL 确保他能够执行并返回有意义的结果。如果执行失败，则深度思考，重新生成 SQL并且回到 Step 3
+
+4. 把用户的输入，生成 SQL 以及返回的结果的一部分进行分析来确认结果是否有意义，根据分析结果进行打分。10分非常 confident，0分非常不 confident。如果小于 7 分，则深度思考，重新生成 SQL 且回到 Step 3
+
+5. 最后根据用户的输入是仅返回 SQL 还是查询结果（默认）进行相应的返回。
