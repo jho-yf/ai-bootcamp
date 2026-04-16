@@ -1,0 +1,6 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "plugin": [
+    "../w6-opencode-logging/llm-logger-plugin.ts"
+  ]
+}
