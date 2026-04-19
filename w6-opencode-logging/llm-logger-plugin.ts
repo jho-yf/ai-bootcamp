@@ -9,36 +9,19 @@ import path from "path"
 const LOG_DIR = path.resolve(process.cwd(), "logs")
 
 // ---------------------------------------------------------------------------
-// Inline types (avoids external @opencode-ai/plugin dependency in IDE)
-// ---------------------------------------------------------------------------
-
-interface HookInput {
-  sessionID: string
-  agent: string
-  model: { providerID: string; id: string; [k: string]: unknown }
-  provider: Record<string, unknown>
-  message: Record<string, unknown>
-}
-
-interface TurnState {
-  turn: number
-  sessionID: string
-  filePath: string
-  ts: string
-  userText: string
-  inputToolNames: Set<string>
-  outputTexts: string[]
-  outputToolNames: string[]
-  finishReason: string
-  isComplete: boolean
-}
-
-// ---------------------------------------------------------------------------
 // State
 // ---------------------------------------------------------------------------
 
-const turnCounters = new Map<string, number>()
-const activeTurns = new Map<string, TurnState>()
+interface SessionState {
+  dir: string // e.g. logs/20260417_093500_abc123/
+  conversationIndex: number
+  filePath: string // current conversation file
+  turn: number
+  loggedMessages: Set<string>
+  conversationDone: boolean // true after finish=stop
+}
+
+const sessions = new Map<string, SessionState>()
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -60,8 +43,17 @@ async function appendLine(filePath: string, data: Record<string, unknown>) {
   }
 }
 
+/** Format Date as local time: 20260416_235904 */
+function formatLocalTime(d: Date): string {
+  const pad = (n: number) => String(n).padStart(2, "0")
+  return (
+    `${d.getFullYear()}${pad(d.getMonth() + 1)}${pad(d.getDate())}` +
+    `_${pad(d.getHours())}${pad(d.getMinutes())}${pad(d.getSeconds())}`
+  )
+}
+
 // ---------------------------------------------------------------------------
-// Filename summary generation (English only)
+// Filename generation (English only)
 // ---------------------------------------------------------------------------
 
 const STOP_WORDS = new Set([
@@ -74,14 +66,14 @@ const STOP_WORDS = new Set([
   "and", "or", "but", "not", "no", "if", "then", "than", "so", "just",
 ])
 
-/** Extract English-only keywords from text */
 function extractEnglishKeywords(text: string, maxWords: number): string[] {
   if (!text) return []
-  const words = text
+  return text
     .replace(/[^a-zA-Z0-9\s]/g, " ")
     .split(/\s+/)
     .filter((w) => w.length > 2 && !STOP_WORDS.has(w.toLowerCase()))
-  return words.slice(0, maxWords).map((w) => w.toLowerCase())
+    .slice(0, maxWords)
+    .map((w) => w.toLowerCase())
 }
 
 function sanitizeForFilename(s: string): string {
@@ -92,86 +84,40 @@ function sanitizeForFilename(s: string): string {
     .slice(0, 80)
 }
 
-function generateSummary(state: TurnState): string {
-  const parts: string[] = []
-
-  // --- Input side ---
-  if (state.turn === 1 && state.userText) {
-    const kw = extractEnglishKeywords(state.userText, 3)
-    if (kw.length > 0) {
-      parts.push(...kw)
-    } else {
-      parts.push("user-request")
-    }
-  } else if (state.inputToolNames.size > 0) {
-    const names = [...state.inputToolNames].slice(0, 2)
-    parts.push(...names, "results")
-  }
-
-  // --- Output side ---
-  if (state.outputToolNames.length > 0) {
-    const unique = [...new Set(state.outputToolNames)].slice(0, 2)
-    parts.push("calls", ...unique)
-  } else if (state.finishReason === "stop" && state.outputTexts.length > 0) {
-    const combined = state.outputTexts.join(" ")
-    const kw = extractEnglishKeywords(combined, 2)
-    if (parts.length > 0) {
-      parts.push("responds", ...kw)
-    } else if (kw.length > 0) {
-      parts.push(...kw)
-    } else {
-      parts.push("final-response")
-    }
-  }
-
-  if (parts.length === 0) {
-    parts.push("turn", String(state.turn))
-  }
-
-  return sanitizeForFilename(parts.slice(0, 5).join("-"))
+function makeConversationSummary(userText: string): string {
+  const kw = extractEnglishKeywords(userText, 4)
+  if (kw.length > 0) return sanitizeForFilename(kw.join("-"))
+  return "conversation"
 }
 
-// ---------------------------------------------------------------------------
-// Extract info from input messages for summary
-// ---------------------------------------------------------------------------
-
-interface MessageLike {
-  info?: { role?: string; sessionID?: string; [k: string]: unknown }
-  parts?: Array<Record<string, unknown>>
-}
-
-function analyzeInputMessages(messages: MessageLike[]): {
-  userText: string
-  inputToolNames: Set<string>
-} {
-  let userText = ""
-  const inputToolNames = new Set<string>()
-
+/** Extract first user text from messages */
+function firstUserText(
+  messages: Array<{
+    info?: { role?: string; [k: string]: unknown }
+    parts?: Array<Record<string, unknown>>
+  }>,
+): string {
   for (const msg of messages) {
-    const role = msg.info?.role
-    const parts = msg.parts || []
-
-    if (role === "user" && !userText) {
-      for (const part of parts) {
-        if (part.type === "text" && typeof part.text === "string" && part.text.trim()) {
-          userText = part.text.trim()
-          break
-        }
-      }
-    }
-
-    if (role === "assistant") {
-      for (const part of parts) {
-        const toolName =
-          part.toolName ?? part.name ?? (part.tool as Record<string, unknown> | undefined)?.name
-        if (typeof toolName === "string") {
-          inputToolNames.add(toolName)
-        }
+    if (msg.info?.role !== "user") continue
+    for (const part of msg.parts || []) {
+      if (part.type === "text" && typeof part.text === "string" && part.text.trim()) {
+        return part.text.trim()
       }
     }
   }
+  return ""
+}
 
-  return { userText, inputToolNames }
+/** Start a new conversation file within a session */
+function startNewConversation(state: SessionState, userText: string) {
+  state.conversationIndex++
+  state.turn = 0
+  state.conversationDone = false
+  state.loggedMessages.clear()
+
+  const summary = makeConversationSummary(userText)
+  const seq = String(state.conversationIndex).padStart(3, "0")
+  state.filePath = path.join(state.dir, `${seq}_${summary}.jsonl`)
 }
 
 // ---------------------------------------------------------------------------
@@ -186,42 +132,54 @@ const plugin = {
       // 1. Full message array sent to LLM (fires once per turn)
       async "experimental.chat.messages.transform"(
         _input: Record<string, unknown>,
-        output: { messages: MessageLike[] },
+        output: { messages: Array<Record<string, unknown>> },
       ) {
         const messages = output.messages
         if (!messages?.length) return
 
-        const sessionID = messages[0]?.info?.sessionID
+        const sessionID = (messages[0] as { info?: { sessionID?: string } })?.info?.sessionID as
+          | string
+          | undefined
         if (!sessionID) return
 
-        const turn = (turnCounters.get(sessionID) ?? 0) + 1
-        turnCounters.set(sessionID, turn)
+        let state = sessions.get(sessionID)
 
-        const sessionDir = path.join(LOG_DIR, sessionID)
-        await fs.promises.mkdir(sessionDir, { recursive: true })
-
-        const now = new Date()
-        const ts = now.toISOString().replace(/[-:]/g, "").replace("T", "_").split(".")[0]
-        const pendingPath = path.join(sessionDir, `${ts}_pending.jsonl`)
-
-        const { userText, inputToolNames } = analyzeInputMessages(messages)
-
-        const state: TurnState = {
-          turn,
-          sessionID,
-          filePath: pendingPath,
-          ts,
-          userText,
-          inputToolNames,
-          outputTexts: [],
-          outputToolNames: [],
-          finishReason: "",
-          isComplete: false,
+        // Create session folder on first encounter
+        if (!state) {
+          const now = new Date()
+          const ts = formatLocalTime(now)
+          const sessionDir = path.join(LOG_DIR, `${ts}_${sessionID}`)
+          await fs.promises.mkdir(sessionDir, { recursive: true })
+          state = {
+            dir: sessionDir,
+            conversationIndex: 0,
+            filePath: "",
+            turn: 0,
+            loggedMessages: new Set(),
+            conversationDone: false,
+          }
+          sessions.set(sessionID, state)
         }
-        activeTurns.set(sessionID, state)
 
-        await appendLine(pendingPath, { type: "meta", turn, ts: now.toISOString(), sessionID })
-        await appendLine(pendingPath, {
+        // Start new conversation if: first ever, or previous one finished
+        if (state.conversationDone || state.conversationIndex === 0) {
+          const userText = firstUserText(
+            messages as Array<{
+              info?: { role?: string; [k: string]: unknown }
+              parts?: Array<Record<string, unknown>>
+            }>,
+          )
+          startNewConversation(state, userText)
+        }
+
+        state.turn++
+
+        await appendLine(state.filePath, {
+          type: "turn_start",
+          turn: state.turn,
+          ts: new Date().toISOString(),
+        })
+        await appendLine(state.filePath, {
           type: "request",
           messageCount: messages.length,
           messages: safeSnapshot(messages),
@@ -235,7 +193,7 @@ const plugin = {
       ) {
         const sessionID = input.sessionID
         if (!sessionID) return
-        const state = activeTurns.get(sessionID)
+        const state = sessions.get(sessionID)
         if (!state) return
 
         await appendLine(state.filePath, {
@@ -246,10 +204,18 @@ const plugin = {
       },
 
       // 3. LLM parameters
-      async "chat.params"(input: HookInput, output: Record<string, unknown>) {
+      async "chat.params"(
+        input: {
+          sessionID: string
+          agent: string
+          model: { providerID: string; id: string; [k: string]: unknown }
+          [k: string]: unknown
+        },
+        output: Record<string, unknown>,
+      ) {
         const sessionID = input.sessionID
         if (!sessionID) return
-        const state = activeTurns.get(sessionID)
+        const state = sessions.get(sessionID)
         if (!state) return
 
         await appendLine(state.filePath, {
@@ -270,10 +236,8 @@ const plugin = {
       ) {
         const sessionID = input.sessionID
         if (!sessionID) return
-        const state = activeTurns.get(sessionID)
+        const state = sessions.get(sessionID)
         if (!state) return
-
-        state.outputTexts.push(output.text)
 
         await appendLine(state.filePath, {
           type: "text_output",
@@ -290,10 +254,8 @@ const plugin = {
       ) {
         const sessionID = input.sessionID
         if (!sessionID) return
-        const state = activeTurns.get(sessionID)
+        const state = sessions.get(sessionID)
         if (!state) return
-
-        state.outputToolNames.push(input.tool)
 
         await appendLine(state.filePath, {
           type: "tool_call",
@@ -308,7 +270,7 @@ const plugin = {
         })
       },
 
-      // 6. Bus events: capture final assistant message metadata + rename file
+      // 6. Bus events: capture assistant message metadata
       async "event"(input: { event: Record<string, unknown> }) {
         const event = input.event
         if (!event || typeof event !== "object") return
@@ -322,11 +284,13 @@ const plugin = {
         if (!sessionID || !info) return
         if (info.role !== "assistant" || !info.finish) return
 
-        const state = activeTurns.get(sessionID)
-        if (!state || state.isComplete) return
+        const state = sessions.get(sessionID)
+        if (!state) return
 
-        state.isComplete = true
-        state.finishReason = info.finish as string
+        // Deduplicate: only log once per message ID
+        const msgID = info.id as string | undefined
+        if (msgID && state.loggedMessages.has(msgID)) return
+        if (msgID) state.loggedMessages.add(msgID)
 
         await appendLine(state.filePath, {
           type: "response",
@@ -337,18 +301,11 @@ const plugin = {
           error: safeSnapshot(info.error),
         })
 
-        const summary = generateSummary(state)
-        const dir = path.dirname(state.filePath)
-        const finalName = `${state.ts}_${summary}.jsonl`
-        const finalPath = path.join(dir, finalName)
-
-        try {
-          await fs.promises.rename(state.filePath, finalPath)
-        } catch {
-          // Rename failed (e.g. name collision) — data is safe in pending file
+        // Mark conversation done when LLM finishes (not tool-calls)
+        // finish=tool-calls means more turns are coming
+        if (info.finish !== "tool-calls") {
+          state.conversationDone = true
         }
-
-        activeTurns.delete(sessionID)
       },
     }
   },
