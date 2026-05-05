@@ -1,0 +1,11 @@
+[package]
+name = "mcp_example"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+agent-core = { path = "../../crates/agent-core" }
+tokio = { version = "1.52.2", features = ["full"] }
+anyhow = "1.0.102"
+serde_json = "1.0.149"
+tracing-subscriber = "0.3.23"

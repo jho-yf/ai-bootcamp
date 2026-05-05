@@ -32,3 +32,13 @@
 - 使用 scrollbar 来控制区域长度，文件内容使用 markdown renderer 来渲染。
 - design token 使用 @w6-opencode-logging-ui/styles 中的 token
 - 根据这些需求，先撰写一个 design doc 放在 @specs/w6/003-visualize-opencode-input-output.md
+
+
+## opencode 多轮对话 Agent 及其工具调用设计
+
+仔细阅读 @vendors/opencode/ 的代码，研究其如何构建 coding agent 的核心功能，分析 Agent 是如何设计的，工具调用是如何设计的，用于帮助构建一个简单的 multi-turn Agent with tools。输出到 @specs/w6/004-simple-multi-turn-agent-with-tools.md
+
+
+## Simple Agent 构建
+
+基于 @specs/w6/004-simple-multi-turn-agent-with-tools.md 的规范，使用 rust lang 和 openai 构建一个 agent sdk，提供 agent 的核心功能，用户可以方便地为 agent 添加自定义工具和 mcp。完成构建后，确保所有实现都符合 design spec，并提供几个 example 来展示如何使用（包含至少一个使用 mcp 的例子）。将构建结果输出到 @w6-simple-agent 文件夹中
