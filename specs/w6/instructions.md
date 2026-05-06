@@ -42,3 +42,32 @@
 ## Simple Agent 构建
 
 基于 @specs/w6/004-simple-multi-turn-agent-with-tools.md 的规范，使用 rust lang 和 openai 构建一个 agent sdk，提供 agent 的核心功能，用户可以方便地为 agent 添加自定义工具和 mcp。完成构建后，确保所有实现都符合 design spec，并提供几个 example 来展示如何使用（包含至少一个使用 mcp 的例子）。将构建结果输出到 @w6-simple-agent 文件夹中
+
+## code review system prompt
+
+base on @specs/w6/codereview-prompt/codex.txt and @specs/w6/codereview-prompt/review.txt think hard, we want to generate a system prompt for @w6-codereview-agent which is based on @w6-simple-agent.The code review agent will only read file / write file / git command tool so make sure the system prompt is clear and concise, don't mention unexisting stuff. And make sure system prompt focused on code review but have all the good parts of @specs/w6/codereview-prompt/codex.txt. Write the promts down to @specs/w6/codereview-prompt/system.md, use English
+
+## system prompt review
+
+检查 @specs/w6/codereview-prompt/system.md 确保 system prompt 定义 code review 流程相关的所有行为规范
+
+## 构建 code review agent design spec
+
+根据 @specs/w6/codereview-prompt/system.md 和 @w6-simple-agent 代码，构建一个 codereview agent 的设计文档，主要包含以下内容：
+
+- read file：读取某个文件或某个文件夹的内容
+- write file：写入某个文件的内容
+- git command：执行 git 命令，尤其是可以根据用户的各种需求找到合适的 git diff, 包括不限于：branch diff， unstaged diff, staged diff, commit diff, pull request diff, etc.
+
+这些工具的使用方法，相关例子要更新在 system.md 中，以便 LLM 可以方便地使用这些工具。
+
+用户可以这样使用 codereview agent：
+
+- 帮我 review 当前 branch 新代码
+- 帮我 review commit 14hjd5 之后的代码
+
+仔细考虑这些需求，构建一个 solid 设计文档，文档放在 @specs/w6/005-codereview-agent-design.md 中。输出中文。
+
+## codereview agent design spec review
+
+仔细阅读 @specs/w6/005-codereview-agent-design.md 确保整个过程是由 llm 驱动的，而 agent 只是提供合适的 system prompt 和 tools
