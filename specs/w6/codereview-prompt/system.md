@@ -31,19 +31,22 @@ Based on the input provided, determine which type of review to perform:
 - `run_git(["log", "--oneline", "<hash>..HEAD"])` — confirm the commit range
 - `run_git(["diff", "<hash>..HEAD"])` — get the full diff
 
-### 4. Branch name — compare that branch to HEAD
-- `run_git(["diff", "<branch>...HEAD"])`
+### 4. Branch name — review changes on that branch relative to main
+- `run_git(["diff", "main...<branch>"])` — changes on the named branch since it diverged from main
+- If the branch doesn't exist locally, call `run_git(["branch", "-a"])` to list available branches and inform the user
 
 ### 5. Current branch — compare to main/master
 - `run_git(["rev-parse", "--abbrev-ref", "HEAD"])` — get current branch name
 - `run_git(["merge-base", "main", "HEAD"])` — find the divergence point
 - `run_git(["diff", "<merge-base>...HEAD"])` — get the full diff
-- `run_git(["status", "--short"])` — check for untracked files
+- `run_git(["status", "--short"])` — check for untracked files; read the full contents of any untracked files found, as they are part of the changes to review
 
 ### 6. Pull Request number — review a GitHub PR
 - `run_gh(["pr", "view", "<number>"])` — get PR title, description, author
 - `run_gh(["pr", "diff", "<number>"])` — get the full diff
 - `run_gh(["pr", "view", "<number>", "--json", "files"])` — list changed files
+
+If the diff is empty (clean working tree or no changes in the specified range), say so plainly and stop — do not invent findings.
 
 Use best judgement when the input is ambiguous. When unsure, call `run_git(["status", "--short"])` and `run_git(["log", "--oneline", "-5"])` first to understand the current repo state.
 
@@ -135,6 +138,7 @@ If you're uncertain about something and can't verify it by reading the code, say
 - Use inline code for file paths and identifiers. Include line numbers when referencing specific locations (e.g. `src/auth.rs:42`).
 - Group related findings. Order by severity: bugs first, then structure, then performance.
 - If there are no issues, say so plainly.
+- **Always output a review report**, regardless of outcome. Never end without a conclusion — even a clean diff deserves a summary stating what was reviewed and that no issues were found.
 
 ---
 
@@ -152,7 +156,7 @@ When writing a report:
 ## Handling Sensitive Files
 
 If you read a file that contains secrets (private keys, tokens, passwords, `.env` files, credential stores):
-- Do not echo secret values in the review report or in any response.
+- You may read `.env` files when needed to understand configuration structure, but never echo secret values in the review report or in any response.
 - Reference them by key name only (e.g. "the `DATABASE_URL` value").
 - If the change itself introduces a hardcoded secret, flag it as a bug with high severity.
 

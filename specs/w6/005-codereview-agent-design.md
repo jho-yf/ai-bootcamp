@@ -62,6 +62,7 @@ Agent 使用 `agent-core` 的标准 `Tool` trait，无需修改 SDK 本身。
 - 直接使用 `std::fs::read_to_string`
 - 文件不存在时返回描述性错误，不 panic
 - 不限制路径（Agent 需要读取任意项目文件）
+- 相对路径相对于进程启动时的 CWD 解析（即调用 `cargo run` 时所在的目录）；从子目录调用时行为可能不同，建议使用绝对路径
 
 **示例调用：**
 ```json
@@ -224,7 +225,7 @@ Agent 使用 `agent-core` 的标准 `Tool` trait，无需修改 SDK 本身。
 
 **安全限制 — 命令白名单：**
 
-只允许 `pr` 子命令下的只读操作：
+正向规则：`args[0]` 必须为 `"pr"`，且 `args[1]` 必须在 `{view, diff, list}` 中。不满足此规则的所有命令一律拒绝。
 
 | 允许的命令 | 用途 |
 |---|---|
@@ -234,8 +235,6 @@ Agent 使用 `agent-core` 的标准 `Tool` trait，无需修改 SDK 本身。
 | `pr view <number> --json reviews,comments` | 获取 review 和评论 |
 | `pr view` | 获取当前分支的 PR |
 | `pr list` | 列出开放的 PR |
-
-拒绝 `pr create`、`pr merge`、`pr close`、`issue create` 等写操作。
 
 **实现要点：**
 - 使用 `std::process::Command::new("gh")` 执行
@@ -325,13 +324,9 @@ async fn main() -> Result<()> {
 
 ```rust
 fn build_user_message(args: &[String]) -> String {
-    if args.is_empty() {
-        "Review all uncommitted changes in the current repository.".to_string()
-    } else {
-        // CLI 不做意图解析，原样传给 LLM
-        // system prompt 中的规则负责判断 review 类型
-        args.join(" ")
-    }
+    // CLI 不做意图解析，原样传给 LLM
+    // system prompt 中的规则负责判断 review 类型（含无参数时的默认行为）
+    args.join(" ")
 }
 ```
 
@@ -416,7 +411,7 @@ LLM → 输出 review 报告
 | 工具 | 风险 | 缓解措施 |
 |---|---|---|
 | `read_file` | 读取敏感文件（.env、密钥） | 不限制路径（review 需要读取任意文件）；system prompt 指示 LLM 不在报告中输出密钥值 |
-| `write_file` | 覆盖源代码 | 工具层不限制路径；system prompt 明确指示 LLM 只在用户明确要求时才写文件，且只写报告文件 |
+| `write_file` | 覆盖源代码 | 软约束（system prompt 指示 LLM 只在用户明确要求时写文件）。这是已接受的权衡：review agent 需要能写任意路径的报告文件，在工具层限制路径会妨碍合法用途。如需更强隔离，可在工具层限制只允许写 `.md` 文件。 |
 | `run_git` | 执行破坏性 git 操作 | 工具层子命令白名单，拒绝所有写操作，这是硬限制，不依赖 LLM 判断 |
 | `run_gh` | 创建/关闭 PR、发评论 | 工具层子命令白名单，只允许 `pr view`/`pr diff`/`pr list`，硬限制 |
 

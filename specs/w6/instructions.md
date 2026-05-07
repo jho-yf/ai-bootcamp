@@ -71,3 +71,19 @@ base on @specs/w6/codereview-prompt/codex.txt and @specs/w6/codereview-prompt/re
 ## codereview agent design spec review
 
 仔细阅读 @specs/w6/005-codereview-agent-design.md 确保整个过程是由 llm 驱动的，而 agent 只是提供合适的 system prompt 和 tools
+
+## codex review: review specs
+
+使用 codex review skills 对 @specs/w6/005-codereview-agent-design.md 和 @specs/w6/codereview-prompt/system.md 进行 review，确保 @specs/w6/codereview-prompt/system.md 定义 code review 流程相关的所有行为规范，确保 @specs/w6/005-codereview-agent-design.md 整个过程中是有 llm 驱动的，而 agent 只是提供合适的 system prompt 和 tools。
+
+## 构建 code review agent 代码
+
+根据 @specs/w6/005-codereview-agent-design.md 和 @specs/w6/codereview-prompt/system.md ,基于 @w6-simple-agent 代码，构建一个 codereview agent 代码，输出到 @w6-codereview-agent 文件夹中。实现完成后根据几个场景运行测试，确保 agent 能够正常工作。
+
+要求：
+ - 所有依赖使用最新版本
+ - cli 使用 user friendly 的 cli 工具，提升交互性
+
+## codex review: codereview agent 代码
+
+使用 codex review skills 对 @w6-codereview-agent 代码进行 review，确保代码实现符合 @specs/w6/005-codereview-agent-design.md 和 @specs/w6/codereview-prompt/system.md 中定义的行为规范。将 review 的结果输出到 @specs/w6/006-codereview-agent-review-result.md 中。
