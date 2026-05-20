@@ -31,8 +31,19 @@
 ## 目录结构生成
 
 根据 @specs/w7/002-genslides-design.md 中的目录结构，在 @w7-genslides 目录下生成对应的目录结构，先不要生成代码。然后生成一个 CLAUDE.md 文件，内容充分考虑：
-1. TypeScript 语言的 Best Practice，Next.js 框架的 Best Practice，Tailwind CSS v4 的 Best Practice
-2. 架构设计遵循的原则：SOLID / YAGNI / KISS
-3. 代码的组织结构
-4. 并发处理
-5. 错误处理和日志处理
+1. TypeScript 语言的 Best Practice
+2. Next.js 框架的 Best Practice
+3. Tailwind CSS v4 的 Best Practice
+4. Vue 3 的 Best Practice
+5. 架构设计遵循的原则：SOLID / YAGNI / KISS
+6. 代码的组织结构
+7. 并发处理
+8. 错误处理和日志处理
+
+## 代码生成
+
+根据 @specs/w7/002-genslides-design.md 和 @specs/w7/原型图.png，启动 frontend 和 backend 两个 agent 分别撰写前端代码和后端代码，代码在 @w7-genslides 目录下。
+
+## Slide 风格
+
+使用浅黄色 / 红褐色的水彩画风格，走可爱卡通路线，主要角色是一个可爱的动物，类似 1 的风格。
