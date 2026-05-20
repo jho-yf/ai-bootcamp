@@ -1,0 +1,115 @@
+<mxfile host="Electron" agent="Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) draw.io/29.0.3 Chrome/140.0.7339.249 Electron/38.7.0 Safari/537.36">
+  <diagram name="第 1 页" id="mRx9ysxSSDnufI7xc32K">
+    <mxGraphModel dx="2595" dy="2239" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="827" pageHeight="1169" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="wmx0g6WHg91OoVCdij8d-1" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=default;" value="" vertex="1">
+          <mxGeometry height="740" width="1300" x="390" y="80" as="geometry" />
+        </mxCell>
+        <mxCell id="wmx0g6WHg91OoVCdij8d-2" parent="1" style="rounded=0;whiteSpace=wrap;html=1;" value="" vertex="1">
+          <mxGeometry height="650" width="360" x="390" y="170" as="geometry" />
+        </mxCell>
+        <mxCell id="wmx0g6WHg91OoVCdij8d-3" parent="1" style="rounded=0;whiteSpace=wrap;html=1;" value="" vertex="1">
+          <mxGeometry height="650" width="940" x="750" y="170" as="geometry" />
+        </mxCell>
+        <mxCell id="wmx0g6WHg91OoVCdij8d-4" parent="1" style="rounded=0;whiteSpace=wrap;html=1;" value="" vertex="1">
+          <mxGeometry height="60" width="120" x="414" y="100" as="geometry" />
+        </mxCell>
+        <mxCell id="wmx0g6WHg91OoVCdij8d-5" edge="1" parent="1" style="endArrow=classic;html=1;rounded=0;" value="">
+          <mxGeometry height="50" relative="1" width="50" as="geometry">
+            <mxPoint x="470" y="120" as="sourcePoint" />
+            <mxPoint x="460" y="30" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="wmx0g6WHg91OoVCdij8d-6" parent="1" style="text;html=1;whiteSpace=wrap;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;rounded=0;" value="&lt;b&gt;&lt;font style=&quot;font-size: 18px;&quot;&gt;Logo GenSlides&lt;/font&gt;&lt;/b&gt;" vertex="1">
+          <mxGeometry height="30" width="210" x="350" y="-20" as="geometry" />
+        </mxCell>
+        <mxCell id="wmx0g6WHg91OoVCdij8d-7" parent="1" style="rounded=0;whiteSpace=wrap;html=1;" value="" vertex="1">
+          <mxGeometry height="60" width="596" x="560" y="100" as="geometry" />
+        </mxCell>
+        <mxCell id="wmx0g6WHg91OoVCdij8d-10" edge="1" parent="1" source="wmx0g6WHg91OoVCdij8d-7" style="endArrow=classic;html=1;rounded=0;" value="">
+          <mxGeometry height="50" relative="1" width="50" as="geometry">
+            <mxPoint x="1090" y="380" as="sourcePoint" />
+            <mxPoint x="780" y="-50" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="wmx0g6WHg91OoVCdij8d-11" parent="1" style="text;html=1;whiteSpace=wrap;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;rounded=0;" value="&lt;b&gt;&lt;font style=&quot;font-size: 18px;&quot;&gt;Slides 标题&lt;/font&gt;&lt;/b&gt;" vertex="1">
+          <mxGeometry height="30" width="210" x="680" y="-90" as="geometry" />
+        </mxCell>
+        <mxCell id="wmx0g6WHg91OoVCdij8d-12" parent="1" style="rounded=0;whiteSpace=wrap;html=1;" value="&lt;font style=&quot;font-size: 18px;&quot;&gt;&lt;b&gt;Slides1&lt;/b&gt;&lt;/font&gt;" vertex="1">
+          <mxGeometry height="160" width="330" x="405" y="190" as="geometry" />
+        </mxCell>
+        <mxCell id="wmx0g6WHg91OoVCdij8d-13" parent="1" style="rounded=0;whiteSpace=wrap;html=1;" value="&lt;b style=&quot;font-size: 18px;&quot;&gt;Slides2&lt;/b&gt;" vertex="1">
+          <mxGeometry height="160" width="330" x="405" y="370" as="geometry" />
+        </mxCell>
+        <mxCell id="wmx0g6WHg91OoVCdij8d-14" parent="1" style="rounded=0;whiteSpace=wrap;html=1;" value="" vertex="1">
+          <mxGeometry height="160" width="330" x="405" y="550" as="geometry" />
+        </mxCell>
+        <mxCell id="wmx0g6WHg91OoVCdij8d-15" parent="1" style="text;html=1;whiteSpace=wrap;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;rounded=0;" value="&lt;font style=&quot;font-size: 18px;&quot;&gt;&lt;b&gt;...&lt;/b&gt;&lt;/font&gt;" vertex="1">
+          <mxGeometry height="30" width="60" x="540" y="740" as="geometry" />
+        </mxCell>
+        <mxCell id="wmx0g6WHg91OoVCdij8d-17" parent="1" style="rounded=0;whiteSpace=wrap;html=1;" value="&lt;font style=&quot;font-size: 18px;&quot;&gt;&lt;b&gt;播放&lt;/b&gt;&lt;/font&gt;" vertex="1">
+          <mxGeometry height="60" width="120" x="1534" y="100" as="geometry" />
+        </mxCell>
+        <mxCell id="wmx0g6WHg91OoVCdij8d-19" parent="1" style="rounded=0;whiteSpace=wrap;html=1;" value="" vertex="1">
+          <mxGeometry height="600" width="900" x="770" y="190" as="geometry" />
+        </mxCell>
+        <mxCell id="wmx0g6WHg91OoVCdij8d-21" parent="1" style="rounded=0;whiteSpace=wrap;html=1;" value="" vertex="1">
+          <mxGeometry height="40" width="80" x="980" y="710" as="geometry" />
+        </mxCell>
+        <mxCell id="wmx0g6WHg91OoVCdij8d-25" parent="1" style="rounded=0;whiteSpace=wrap;html=1;" value="" vertex="1">
+          <mxGeometry height="40" width="80" x="1100" y="710" as="geometry" />
+        </mxCell>
+        <mxCell id="wmx0g6WHg91OoVCdij8d-26" parent="1" style="rounded=0;whiteSpace=wrap;html=1;" value="" vertex="1">
+          <mxGeometry height="40" width="80" x="1220" y="710" as="geometry" />
+        </mxCell>
+        <mxCell id="wmx0g6WHg91OoVCdij8d-27" parent="1" style="rounded=0;whiteSpace=wrap;html=1;" value="" vertex="1">
+          <mxGeometry height="40" width="80" x="1340" y="710" as="geometry" />
+        </mxCell>
+        <mxCell id="wmx0g6WHg91OoVCdij8d-28" edge="1" parent="1" style="endArrow=none;html=1;rounded=0;" value="">
+          <mxGeometry height="50" relative="1" width="50" as="geometry">
+            <mxPoint x="705" y="360.0042857142856" as="sourcePoint" />
+            <mxPoint x="430" y="360" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="wmx0g6WHg91OoVCdij8d-29" edge="1" parent="1" source="wmx0g6WHg91OoVCdij8d-17" style="endArrow=classic;html=1;rounded=0;" value="">
+          <mxGeometry height="50" relative="1" width="50" as="geometry">
+            <mxPoint x="920" y="450" as="sourcePoint" />
+            <mxPoint x="1570" y="-30" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="wmx0g6WHg91OoVCdij8d-30" parent="1" style="text;html=1;whiteSpace=wrap;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;rounded=0;" value="&lt;font style=&quot;font-size: 18px;&quot;&gt;&lt;b&gt;全屏从当前选中的 Slide 开始播放&lt;/b&gt;&lt;/font&gt;" vertex="1">
+          <mxGeometry height="60" width="280" x="1440" y="-90" as="geometry" />
+        </mxCell>
+        <mxCell id="wmx0g6WHg91OoVCdij8d-31" edge="1" parent="1" source="wmx0g6WHg91OoVCdij8d-12" style="endArrow=classic;html=1;rounded=0;exitX=0.348;exitY=0.563;exitDx=0;exitDy=0;exitPerimeter=0;" value="">
+          <mxGeometry height="50" relative="1" width="50" as="geometry">
+            <mxPoint x="160" y="370" as="sourcePoint" />
+            <mxPoint x="310" y="240" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="wmx0g6WHg91OoVCdij8d-32" parent="1" style="text;html=1;whiteSpace=wrap;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;rounded=0;" value="&lt;font style=&quot;font-size: 18px;&quot;&gt;&lt;b&gt;每个 slides 都有一个唯一的 sid 跟若干图片关联，用户单击选中Sides之后，Slide 图片会展示在主区域，双击可以修改其文字内容&lt;/b&gt;&lt;/font&gt;" vertex="1">
+          <mxGeometry height="30" width="300" x="-30" y="220" as="geometry" />
+        </mxCell>
+        <mxCell id="wmx0g6WHg91OoVCdij8d-33" edge="1" parent="1" style="endArrow=classic;html=1;rounded=0;" value="">
+          <mxGeometry height="50" relative="1" width="50" as="geometry">
+            <mxPoint x="490" y="360" as="sourcePoint" />
+            <mxPoint x="330" y="410" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="wmx0g6WHg91OoVCdij8d-34" parent="1" style="text;html=1;whiteSpace=wrap;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;rounded=0;" value="&lt;font style=&quot;font-size: 18px;&quot;&gt;&lt;b&gt;当用户鼠标移动至 Slides 上面或下面的时候会出现一条，点击则创建一个新的 Slides&lt;/b&gt;&lt;/font&gt;" vertex="1">
+          <mxGeometry height="30" width="300" x="10" y="420" as="geometry" />
+        </mxCell>
+        <mxCell id="wmx0g6WHg91OoVCdij8d-35" parent="1" style="text;html=1;whiteSpace=wrap;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;rounded=0;" value="&lt;font style=&quot;font-size: 18px;&quot;&gt;&lt;b&gt;图片根据当前 slide 文字内容生成，保存路径为&lt;/b&gt;&lt;/font&gt;&lt;div&gt;&lt;span style=&quot;font-size: 18px;&quot;&gt;&lt;b&gt;&amp;lt;sid&amp;gt;/&amp;lt;文字的blake3 hash&amp;gt;.jpg&lt;/b&gt;&lt;/span&gt;&lt;/div&gt;&lt;div&gt;&lt;span style=&quot;font-size: 18px;&quot;&gt;&lt;b&gt;一个 slide 可以生成多个图片，如果左侧选中 slide 那跟文字 blake3 hash 一致的图片会展示。如果没有，展示最新的一张图片。底下为缩略图，用户可以切换预览&lt;/b&gt;&lt;/span&gt;&lt;/div&gt;" vertex="1">
+          <mxGeometry height="190" width="500" x="940" y="340" as="geometry" />
+        </mxCell>
+        <mxCell id="UpoUYK7euCq8ED0kmE0x-1" parent="1" style="text;html=1;whiteSpace=wrap;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;rounded=0;" value="&lt;span style=&quot;font-size: 18px;&quot;&gt;&lt;b&gt;Goals：&lt;/b&gt;&lt;/span&gt;&lt;div&gt;&lt;span style=&quot;font-size: 18px;&quot;&gt;&lt;b&gt;1. 支持流畅的 slides 生产，纯视觉方案&lt;/b&gt;&lt;/span&gt;&lt;/div&gt;&lt;div&gt;&lt;span style=&quot;font-size: 18px;&quot;&gt;&lt;b&gt;2. 图片生成可以并行处理，slides 之间互不影响（基准图需要先生成）&lt;/b&gt;&lt;/span&gt;&lt;/div&gt;&lt;div&gt;&lt;span style=&quot;font-size: 18px;&quot;&gt;&lt;b&gt;3. 注意成本（展示当前 slides 的总体成本）&lt;/b&gt;&lt;/span&gt;&lt;/div&gt;&lt;div&gt;&lt;span style=&quot;font-size: 18px;&quot;&gt;&lt;b&gt;&lt;br&gt;&lt;/b&gt;&lt;/span&gt;&lt;/div&gt;&lt;div&gt;&lt;span style=&quot;font-size: 18px;&quot;&gt;&lt;b&gt;&lt;br&gt;&lt;/b&gt;&lt;/span&gt;&lt;/div&gt;&lt;div&gt;&lt;span style=&quot;font-size: 18px;&quot;&gt;&lt;b&gt;Non-Goals：&lt;/b&gt;&lt;/span&gt;&lt;/div&gt;&lt;div&gt;&lt;span style=&quot;font-size: 18px;&quot;&gt;&lt;b&gt;1. 导出成 pptx&lt;/b&gt;&lt;/span&gt;&lt;/div&gt;" vertex="1">
+          <mxGeometry height="190" width="580" x="390" y="900" as="geometry" />
+        </mxCell>
+        <mxCell id="UpoUYK7euCq8ED0kmE0x-4" parent="1" style="text;html=1;whiteSpace=wrap;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;rounded=0;" value="&lt;span style=&quot;font-size: 18px;&quot;&gt;&lt;b&gt;技术方案：&lt;/b&gt;&lt;/span&gt;&lt;div&gt;&lt;span style=&quot;font-size: 18px;&quot;&gt;&lt;b&gt;1. 后端：TypeScript + Next.js + Googel AI SDK&lt;/b&gt;&lt;/span&gt;&lt;/div&gt;&lt;div&gt;&lt;span style=&quot;font-size: 18px;&quot;&gt;&lt;b&gt;2. 前端：TypeScript + Tailwind + Zustand&lt;/b&gt;&lt;/span&gt;&lt;/div&gt;&lt;div&gt;&lt;span style=&quot;font-size: 18px;&quot;&gt;&lt;b&gt;3. slide 保存在当前用户目录：&lt;/b&gt;&lt;/span&gt;&lt;/div&gt;&lt;div&gt;&lt;span style=&quot;font-size: 18px;&quot;&gt;&lt;b&gt;&lt;span style=&quot;white-space: pre;&quot;&gt;&#x9;&lt;/span&gt;3.1&amp;nbsp;~/.genslides/&amp;lt;slug&amp;gt;/outline.yaml：包含所有的文本信息（侧边栏的 slides 源于此）&lt;br&gt;&lt;/b&gt;&lt;/span&gt;&lt;/div&gt;&lt;div&gt;&lt;span style=&quot;font-size: 18px;&quot;&gt;&lt;b&gt;&lt;span style=&quot;white-space: pre;&quot;&gt;&#x9;&lt;/span&gt;3.2 ~/.genslides/images/&amp;lt;sid&amp;gt;/&amp;lt;blake3 hash&amp;gt;.jpg：某个 slide 下面的某张图片&lt;br&gt;&lt;/b&gt;&lt;/span&gt;&lt;/div&gt;&lt;div&gt;&lt;span style=&quot;font-size: 18px;&quot;&gt;&lt;b&gt;4. 不使用数据库，不需要权限管理，整个 app 运行在本地&lt;/b&gt;&lt;/span&gt;&lt;/div&gt;" vertex="1">
+          <mxGeometry height="190" width="770" x="1140" y="900" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>
