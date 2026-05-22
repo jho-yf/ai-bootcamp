@@ -1,0 +1,25 @@
+{
+  "name": "genslides-backend",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "npx next dev --port 3000",
+    "build": "npx next build",
+    "start": "npx next start",
+    "lint": "npx next lint"
+  },
+  "dependencies": {
+    "@google/genai": "^2.4.0",
+    "hash-wasm": "^4.12.0",
+    "next": "^16.2.6",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "undici": "^6.25.0",
+    "yaml": "^2.9.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "@types/react": "^19.0.0",
+    "typescript": "^5.7.0"
+  }
+}
