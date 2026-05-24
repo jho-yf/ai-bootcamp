@@ -11,6 +11,7 @@ ai-bootcamp/
 ├── w3-raflow/            # Tauri 工作流工具
 ├── w5-pg-mcp/            # PostgreSQL MCP 服务器 (Rust)
 ├── w6-opencode-logging/  # OpenCode 日志插件
+├── w7-genslides/         # AI 幻灯片生成工具 (Vue + Next.js)
 ├── specs/                # 各项目的规格说明和设计文档
 ├── docs/                 # 通用文档
 └── Makefile              # 根目录构建脚本
@@ -19,9 +20,10 @@ ai-bootcamp/
 ## 子项目介绍
 
 ### w1-project-alpha
-全栈演示项目，包含：
-- **Backend**: Rust + Axum + SQLx + PostgreSQL
-- **Frontend**: React + TypeScript + Vite
+全栈演示项目：
+- **语言**: Rust, TypeScript, SQL
+- **后端**: Axum + SQLx + PostgreSQL
+- **前端**: React + Vite + TailwindCSS
 
 快速启动：
 ```bash
@@ -34,29 +36,35 @@ make w1-frontend-build  # 构建前端
 ```
 
 ### w2-db-query
-Tauri + React 数据库查询工具，支持：
-- Playwright E2E 测试
-- 数据库查询与可视化
+Tauri 数据库查询工具：
+- **语言**: Rust, TypeScript
+- **桌面框架**: Tauri
+- **前端**: React + Vite
+- **测试**: Playwright E2E
 
 ### w3-raflow
-Tauri 工作流工具，探索 Rust + React 的应用场景。
+Tauri 工作流工具：
+- **语言**: Rust, TypeScript
+- **桌面框架**: Tauri
+- **前端**: React + Vite
 
 ### w5-pg-mcp
-PostgreSQL Model Context Protocol 服务器，用 Rust 实现：
-- LLM 驱动的自然语言到 SQL 转换
-- Schema 自动发现
-- SQL 验证与安全检查
+PostgreSQL MCP 服务器：
+- **语言**: Rust
+- **协议**: Model Context Protocol
+- **功能**: 自然语言转 SQL、Schema 自动发现、SQL 安全检查
 
 ### w6-opencode-logging
-OpenCode CLI 的 LLM 日志记录插件。
+OpenCode CLI 日志插件：
+- **语言**: TypeScript
+- **功能**: LLM 调用日志记录
 
-## 技术栈
-
-- **语言**: Rust, TypeScript, SQL
-- **后端**: Axum, Tauri, SQLx
-- **前端**: React, Vite, TailwindCSS
-- **数据库**: PostgreSQL
-- **工具**: Playwright, pre-commit
+### w7-genslides
+AI 幻灯片生成工具：
+- **语言**: TypeScript
+- **前端**: Vue 3 + Vite + Pinia + TailwindCSS
+- **后端**: Next.js (App Router)
+- **AI**: Google Nano Banana Pro 图片生成
 
 ## 开发
 
