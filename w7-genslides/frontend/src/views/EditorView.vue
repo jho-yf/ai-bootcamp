@@ -229,6 +229,7 @@ function handleStyleThumbnailClick() {
         :slides="presentation.slides"
         :slug="slug"
         :visible="showPlayer"
+        :start-sid="selectedSid"
         @close="showPlayer = false"
       />
 
