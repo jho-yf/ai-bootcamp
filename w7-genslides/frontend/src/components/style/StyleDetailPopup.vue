@@ -33,7 +33,7 @@ function imageUrl(slug: string, filename: string) {
             <img :src="imageUrl(slug, styleConfig.referenceImage)" alt="风格图片" class="w-full object-cover" />
           </div>
           <div v-if="styleConfig.prompt" class="mb-4">
-            <p class="mb-1 text-xs font-medium text-gray-500">Prompt</p>
+            <p class="mb-1 text-xs font-medium text-gray-500">提示词</p>
             <p class="rounded-lg bg-gray-50 p-3 text-sm text-gray-700">{{ styleConfig.prompt }}</p>
           </div>
           <div class="flex justify-end">

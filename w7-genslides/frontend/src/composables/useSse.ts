@@ -21,7 +21,7 @@ export function useSse() {
 
       if (!res.ok) {
         const body = await res.json().catch(() => ({}))
-        const msg = body?.error?.message || `SSE error ${res.status}`
+        const msg = body?.error?.message || `连接失败 (${res.status})`
         error.value = msg
         connected.value = false
         for (const cb of listeners.get('error') ?? []) {
@@ -69,7 +69,7 @@ export function useSse() {
       }
     } catch (e) {
       if ((e as Error).name === 'AbortError') return
-      error.value = e instanceof Error ? e.message : 'SSE connection error'
+      error.value = e instanceof Error ? e.message : '连接失败'
       connected.value = false
       for (const cb of listeners.get('error') ?? []) {
         cb({ error: error.value })

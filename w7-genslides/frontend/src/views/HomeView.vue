@@ -91,8 +91,8 @@ function handleDelete() {
             </button>
           </div>
           <div class="flex items-center gap-4 text-sm text-gray-500">
-            <span>{{ p.slideCount }} 张 Slide</span>
-            <span>${{ p.totalCost.toFixed(2) }}</span>
+            <span>{{ p.slideCount }} 张幻灯片</span>
+            <span>{{ p.totalCost.toFixed(2) }} 元</span>
           </div>
           <div class="mt-2 text-xs text-gray-400">
             {{ new Date(p.updatedAt).toLocaleDateString() }}

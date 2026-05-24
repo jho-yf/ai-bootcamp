@@ -50,7 +50,7 @@ function handleCreate() {
     @dblclick="handleCreate"
   >
     <div class="mb-1 flex items-center justify-between">
-      <span class="text-xs font-medium text-gray-500">Slide {{ index + 1 }}</span>
+      <span class="text-xs font-medium text-gray-500">幻灯片 {{ index + 1 }}</span>
       <button
         class="hidden h-4 w-4 items-center justify-center rounded text-gray-400 hover:bg-red-50 hover:text-red-500 group-hover:flex"
         @click.stop="emit('delete')"

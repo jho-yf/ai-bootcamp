@@ -37,7 +37,7 @@ function imageUrl(filename: string) {
         <img
           :src="imageUrl(image.filename)"
           class="h-full w-full object-cover"
-          :alt="`Thumbnail ${index + 1}`"
+          :alt="`缩略图 ${index + 1}`"
         />
       </button>
       <button

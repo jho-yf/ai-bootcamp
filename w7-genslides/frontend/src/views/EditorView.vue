@@ -169,7 +169,7 @@ function handleStyleThumbnailClick() {
         <!-- Left: Style Thumbnail + Slide List -->
         <aside class="flex w-52 shrink-0 flex-col border-r border-gray-200 bg-gray-50">
           <div class="px-3 pt-2 pb-1">
-            <span class="text-xs font-medium text-gray-500">Style</span>
+            <span class="text-xs font-medium text-gray-500">风格</span>
           </div>
           <StyleThumbnail
             :style-config="presentation.style"
@@ -204,7 +204,7 @@ function handleStyleThumbnailClick() {
             v-else
             class="flex flex-1 items-center justify-center text-gray-400"
           >
-            选择一个 Slide 进行预览
+            选择一张幻灯片进行预览
           </div>
 
           <div
@@ -255,7 +255,7 @@ function handleStyleThumbnailClick() {
           <div v-if="showContentView" class="fixed inset-0 z-40 flex items-center justify-center bg-black/50" @click="showContentView = false">
             <div class="w-full max-w-4xl rounded-2xl bg-white p-6 shadow-2xl" @click.stop>
               <div class="mb-4 flex items-center justify-between">
-                <h2 class="text-lg font-bold text-gray-800">Slide 内容</h2>
+                <h2 class="text-lg font-bold text-gray-800">幻灯片内容</h2>
                 <button
                   class="flex h-7 w-7 items-center justify-center rounded text-gray-400 hover:bg-gray-100 hover:text-gray-600"
                   @click="showContentView = false"
@@ -284,12 +284,12 @@ function handleStyleThumbnailClick() {
       <!-- Delete Confirm Dialog -->
       <ConfirmDialog
         v-model:visible="showDeleteConfirm"
-        title="删除 Slide"
+        title="删除幻灯片"
         confirm-text="删除"
         variant="danger"
         @confirm="confirmDeleteSlide"
       >
-        <p class="text-sm text-gray-500">确定要删除这个 Slide 吗？此操作不可撤销。</p>
+        <p class="text-sm text-gray-500">确定要删除这张幻灯片吗？此操作不可撤销。</p>
       </ConfirmDialog>
 
       <!-- Style Detail Popup -->

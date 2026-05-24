@@ -44,7 +44,7 @@ const imageUrl = computed(() => {
         </svg>
         <div class="text-center">
           <div class="text-sm">生成图片中...</div>
-          <div class="mt-1 text-xs text-gray-400">可以切换到别的 Slide，不会影响当前生成</div>
+          <div class="mt-1 text-xs text-gray-400">可以切换到别的幻灯片，不会影响当前生成</div>
         </div>
       </div>
 

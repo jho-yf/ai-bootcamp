@@ -94,7 +94,7 @@ function onDrop(e: DragEvent, dropIndex: number, slides: Slide[]) {
 
 <template>
   <div class="flex items-center justify-between px-3 py-2">
-    <span class="text-xs font-medium text-gray-500">Slides</span>
+    <span class="text-xs font-medium text-gray-500">幻灯片</span>
   </div>
 
   <div ref="scrollRef" class="scrollbar-hidden relative flex-1 space-y-2 overflow-y-auto px-3">
@@ -133,7 +133,7 @@ function onDrop(e: DragEvent, dropIndex: number, slides: Slide[]) {
       class="flex w-full items-center justify-center gap-1 rounded-lg border-2 border-dashed border-gray-300 py-3 text-sm text-gray-400 transition hover:border-blue-400 hover:text-blue-500"
       @click="emit('add')"
     >
-      + 新建 Slide
+      + 新建幻灯片
     </button>
   </div>
 </template>

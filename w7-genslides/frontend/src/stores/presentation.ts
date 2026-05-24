@@ -42,7 +42,7 @@ export const usePresentationStore = defineStore('presentation', () => {
       const data = await api.get<{ presentations: PresentationSummary[] }>('')
       presentations.value = data.presentations
     } catch (e) {
-      error.value = e instanceof Error ? e.message : 'Failed to load presentations'
+      error.value = e instanceof Error ? e.message : '加载演示文稿列表失败'
     } finally {
       isLoading.value = false
     }
@@ -54,7 +54,7 @@ export const usePresentationStore = defineStore('presentation', () => {
       await api.post('', { title })
       await loadPresentations()
     } catch (e) {
-      error.value = e instanceof Error ? e.message : 'Failed to create presentation'
+      error.value = e instanceof Error ? e.message : '创建演示文稿失败'
     }
   }
 
@@ -68,7 +68,7 @@ export const usePresentationStore = defineStore('presentation', () => {
         selectedSid.value = data.slides[0].sid
       }
     } catch (e) {
-      error.value = e instanceof Error ? e.message : 'Failed to load presentation'
+      error.value = e instanceof Error ? e.message : '加载演示文稿失败'
     } finally {
       isLoading.value = false
     }
@@ -82,7 +82,7 @@ export const usePresentationStore = defineStore('presentation', () => {
         presentation.value.title = title
       }
     } catch (e) {
-      error.value = e instanceof Error ? e.message : 'Failed to update title'
+      error.value = e instanceof Error ? e.message : '更新标题失败'
     }
   }
 
@@ -92,7 +92,7 @@ export const usePresentationStore = defineStore('presentation', () => {
       await api.del(`/${slug}`)
       presentations.value = presentations.value.filter((p) => p.slug !== slug)
     } catch (e) {
-      error.value = e instanceof Error ? e.message : 'Failed to delete presentation'
+      error.value = e instanceof Error ? e.message : '删除演示文稿失败'
     }
   }
 
@@ -107,7 +107,7 @@ export const usePresentationStore = defineStore('presentation', () => {
       }
       return data.slide
     } catch (e) {
-      error.value = e instanceof Error ? e.message : 'Failed to add slide'
+      error.value = e instanceof Error ? e.message : '添加幻灯片失败'
       return null
     }
   }
@@ -128,7 +128,7 @@ export const usePresentationStore = defineStore('presentation', () => {
       }
       return data
     } catch (e) {
-      error.value = e instanceof Error ? e.message : 'Failed to update slide'
+      error.value = e instanceof Error ? e.message : '更新幻灯片失败'
       return null
     }
   }
@@ -144,7 +144,7 @@ export const usePresentationStore = defineStore('presentation', () => {
         }
       }
     } catch (e) {
-      error.value = e instanceof Error ? e.message : 'Failed to delete slide'
+      error.value = e instanceof Error ? e.message : '删除幻灯片失败'
     }
   }
 
@@ -156,7 +156,7 @@ export const usePresentationStore = defineStore('presentation', () => {
         presentation.value.slides = data.slides
       }
     } catch (e) {
-      error.value = e instanceof Error ? e.message : 'Failed to reorder slides'
+      error.value = e instanceof Error ? e.message : '排序幻灯片失败'
     }
   }
 
@@ -171,7 +171,7 @@ export const usePresentationStore = defineStore('presentation', () => {
         }
       }
     } catch (e) {
-      error.value = e instanceof Error ? e.message : 'Failed to delete slide image'
+      error.value = e instanceof Error ? e.message : '删除幻灯片图片失败'
     }
   }
 
@@ -252,7 +252,7 @@ export const usePresentationStore = defineStore('presentation', () => {
       }
       return data
     } catch (e) {
-      error.value = e instanceof Error ? e.message : 'Failed to generate style candidates'
+      error.value = e instanceof Error ? e.message : '生成风格候选失败'
       return null
     }
   }
@@ -268,7 +268,7 @@ export const usePresentationStore = defineStore('presentation', () => {
       }
       return data.style
     } catch (e) {
-      error.value = e instanceof Error ? e.message : 'Failed to select style'
+      error.value = e instanceof Error ? e.message : '选择风格失败'
       return null
     }
   }

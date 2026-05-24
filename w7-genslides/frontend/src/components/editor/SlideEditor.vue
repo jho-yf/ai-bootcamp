@@ -32,7 +32,7 @@ function handleInput() {
     v-model="localContent"
     class="flex-1 resize-none rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
     rows="2"
-    placeholder="Enter slide content..."
+    placeholder="请输入幻灯片内容..."
     @input="handleInput"
   />
 </template>

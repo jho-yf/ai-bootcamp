@@ -47,12 +47,12 @@ function handleSaveAndGenerate() {
           class="w-full max-w-2xl rounded-2xl bg-white p-6 shadow-2xl"
           @click.stop
         >
-          <h2 class="mb-4 text-lg font-bold text-gray-800">编辑 Slide 内容</h2>
+          <h2 class="mb-4 text-lg font-bold text-gray-800">编辑幻灯片内容</h2>
           <textarea
             v-model="localContent"
             class="mb-4 w-full resize-none rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 disabled:cursor-not-allowed disabled:bg-gray-50 disabled:text-gray-400"
             rows="10"
-            placeholder="输入 slide 内容..."
+            placeholder="请输入幻灯片内容..."
             :disabled="isGenerating"
           />
           <div class="flex justify-end gap-2">

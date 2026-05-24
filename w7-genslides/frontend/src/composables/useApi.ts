@@ -13,7 +13,7 @@ export function useApi() {
 
     if (!res.ok) {
       const body = await res.json().catch(() => ({ error: { message: res.statusText } }))
-      const msg = body?.error?.message || body?.message || `API error ${res.status}`
+      const msg = body?.error?.message || body?.message || `请求失败 (${res.status})`
       throw new Error(msg)
     }
 
