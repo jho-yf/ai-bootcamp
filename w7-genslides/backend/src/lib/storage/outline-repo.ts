@@ -63,12 +63,12 @@ export class OutlineRepo {
       throw new Error(`Invalid YAML: "style.candidates" must be an array, got ${typeof candidatesRaw} in ${slug}/outline.yaml`);
     }
     return {
-      slug: obj.slug ?? slug,
-      title: obj.title ?? slug,
+      slug: typeof obj.slug === 'string' ? obj.slug : slug,
+      title: typeof obj.title === 'string' ? obj.title : slug,
       style: {
-        prompt: (style.prompt as string) ?? '',
+        prompt: typeof style.prompt === 'string' ? style.prompt : '',
         candidates: candidatesRaw.map((c) => String(c)),
-        referenceImage: style.referenceImage ?? null,
+        referenceImage: typeof style.referenceImage === 'string' ? style.referenceImage : null,
       },
       slides: slidesRaw.map((s: Record<string, unknown>) => {
         const imagesRaw = s.images ?? [];

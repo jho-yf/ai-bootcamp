@@ -19,7 +19,7 @@ const imageRepo = new ImageRepo(DATA_DIR);
 const imageGenerator = new ImageGenerator(API_KEY, MODEL, BASE_URL);
 
 export const presentationService = new PresentationService(presentationRepo, outlineRepo);
-export const slideService = new SlideService(outlineRepo);
+export const slideService = new SlideService(outlineRepo, imageRepo);
 export const generateService = new GenerateService(outlineRepo, imageRepo, imageGenerator, slideService);
 export const styleService = new StyleService(outlineRepo, imageRepo, imageGenerator);
 export { outlineRepo, imageRepo };

@@ -27,6 +27,9 @@ const showSlideEdit = ref(false)
 const editingSid = ref<string | null>(null)
 const showDeleteConfirm = ref(false)
 const deletingSid = ref<string | null>(null)
+const showContentView = ref(false)
+const viewingSid = ref<string | null>(null)
+const showPlayer = ref(false)
 
 const needsStyleGuide = computed(() => {
   if (!presentation.value) return false
@@ -43,6 +46,11 @@ const editingSlide = computed(() => {
   return presentation.value.slides.find((s) => s.sid === editingSid.value) ?? null
 })
 
+const viewingSlide = computed(() => {
+  if (!viewingSid.value || !presentation.value) return null
+  return presentation.value.slides.find((s) => s.sid === viewingSid.value) ?? null
+})
+
 onMounted(() => {
   presentationStore.loadPresentation(slug.value)
 })
@@ -53,13 +61,17 @@ watch(needsStyleGuide, (val) => {
   }
 }, { immediate: true })
 
-function handleAddSlide() {
+async function handleAddSlide() {
   if (!presentation.value) return
   if (presentation.value.style.referenceImage === null) {
     uiStore.setError('请先生成并选择风格图片')
     return
   }
-  presentationStore.addSlide(slug.value, '')
+  const slide = await presentationStore.addSlide(slug.value, '')
+  if (slide) {
+    presentationStore.selectSlide(slide.sid)
+    handleSlideEdit(slide.sid)
+  }
 }
 
 function handleContentChange(content: string) {
@@ -67,15 +79,23 @@ function handleContentChange(content: string) {
   presentationStore.updateSlide(slug.value, editingSid.value, { content })
 }
 
-function handleSaveAndGenerate(content: string) {
+async function handleSaveAndGenerate(content: string) {
   if (!editingSid.value) return
-  presentationStore.updateSlide(slug.value, editingSid.value, { content })
-  presentationStore.generateImage(slug.value, editingSid.value)
+  const sid = editingSid.value
+  const result = await presentationStore.updateSlide(slug.value, sid, { content })
+  if (result) {
+    presentationStore.generateImage(slug.value, sid)
+  }
 }
 
 function handleSlideEdit(sid: string) {
   editingSid.value = sid
   showSlideEdit.value = true
+}
+
+function handleSlideView(sid: string) {
+  viewingSid.value = sid
+  showContentView.value = true
 }
 
 function handleDeleteSlide(sid: string) {
@@ -96,11 +116,13 @@ function handleImageSelect(index: number) {
   presentationStore.updateSlide(slug.value, selectedSid.value, { activeImageIndex: index })
 }
 
+function handleImageDelete(index: number) {
+  if (!selectedSid.value) return
+  presentationStore.deleteSlideImage(slug.value, selectedSid.value, index)
+}
+
 function handleFullscreenStart() {
-  const el = document.documentElement
-  if (el.requestFullscreen) {
-    el.requestFullscreen()
-  }
+  showPlayer.value = true
 }
 
 function handleStyleGuideClose() {
@@ -122,12 +144,14 @@ function handleStyleThumbnailClick() {
     <AppHeader :title="presentation?.title ?? '加载中...'" :slug="slug" :cost="presentation?.totalCost" editable-title>
       <template #actions>
         <button
-          class="flex h-8 w-8 items-center justify-center rounded-lg text-gray-500 transition hover:bg-gray-100 hover:text-gray-700"
+          class="flex h-8 items-center gap-1.5 rounded-lg bg-blue-600 px-3 text-sm font-medium text-white shadow-sm transition hover:bg-blue-700"
           @click="handleFullscreenStart"
         >
           <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7" />
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-5.197-3.03A1 1 0 008 9.002v5.996a1 1 0 001.555.832l5.197-2.966a1 1 0 000-1.696z" />
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
           </svg>
+          播放
         </button>
       </template>
     </AppHeader>
@@ -143,7 +167,7 @@ function handleStyleThumbnailClick() {
     <template v-else>
       <div class="flex flex-1 overflow-hidden">
         <!-- Left: Style Thumbnail + Slide List -->
-        <aside class="flex w-60 shrink-0 flex-col border-r border-gray-200 bg-gray-50">
+        <aside class="flex w-52 shrink-0 flex-col border-r border-gray-200 bg-gray-50">
           <div class="px-3 pt-2 pb-1">
             <span class="text-xs font-medium text-gray-500">Style</span>
           </div>
@@ -160,39 +184,41 @@ function handleStyleThumbnailClick() {
             @add="handleAddSlide"
             @delete="handleDeleteSlide"
             @edit="handleSlideEdit"
+            @view="handleSlideView"
+            @create="handleSlideEdit"
             @reorder="(sids) => presentationStore.reorderSlides(slug, sids)"
           />
         </aside>
 
         <!-- Right: Preview -->
-        <div class="flex flex-1 flex-col overflow-hidden">
-          <div class="flex flex-1 flex-col overflow-hidden">
-            <ImagePreview
-              v-if="selectedSlide"
-              :slide="selectedSlide"
-              :slug="slug"
-              :is-generating="isGenerating"
-              @select="handleImageSelect"
-              @dblclick="handleSlideEdit(selectedSlide!.sid)"
-            />
-            <div
-              v-else
-              class="flex flex-1 items-center justify-center text-gray-400"
-            >
-              选择一个 Slide 进行预览
-            </div>
+        <div class="relative flex flex-1 flex-col overflow-hidden">
+          <ImagePreview
+            v-if="selectedSlide"
+            :slide="selectedSlide"
+            :slug="slug"
+            :is-generating="isGenerating"
+            @select="handleImageSelect"
+            @dblclick="handleSlideEdit(selectedSlide!.sid)"
+          />
+          <div
+            v-else
+            class="flex flex-1 items-center justify-center text-gray-400"
+          >
+            选择一个 Slide 进行预览
           </div>
 
-          <!-- Bottom: Thumbnail Bar -->
           <div
             v-if="selectedSlide && selectedSlide.images.length > 0"
-            class="flex items-center gap-3 border-t border-gray-100 px-4 py-3"
+            class="absolute right-4 top-1/2 -translate-y-1/2 rounded-2xl border border-gray-200 bg-white/90 p-2 shadow-xl backdrop-blur"
           >
             <ThumbnailBar
               :images="selectedSlide.images"
               :active-index="selectedSlide.activeImageIndex"
               :slug="slug"
+              :is-generating="isGenerating"
               @select="handleImageSelect"
+              @delete="handleImageDelete"
+              @add="selectedSid && handleSlideEdit(selectedSid)"
             />
           </div>
         </div>
@@ -202,7 +228,8 @@ function handleStyleThumbnailClick() {
       <FullscreenPlayer
         :slides="presentation.slides"
         :slug="slug"
-        @start="handleFullscreenStart"
+        :visible="showPlayer"
+        @close="showPlayer = false"
       />
 
       <!-- Slide Edit Popup -->
@@ -214,6 +241,36 @@ function handleStyleThumbnailClick() {
         @update="handleContentChange"
         @save-and-generate="handleSaveAndGenerate"
       />
+
+      <Teleport to="body">
+        <Transition
+          enter-active-class="transition duration-200 ease-out"
+          enter-from-class="opacity-0"
+          enter-to-class="opacity-100"
+          leave-active-class="transition duration-150 ease-in"
+          leave-from-class="opacity-100"
+          leave-to-class="opacity-0"
+        >
+          <div v-if="showContentView" class="fixed inset-0 z-40 flex items-center justify-center bg-black/50" @click="showContentView = false">
+            <div class="w-full max-w-4xl rounded-2xl bg-white p-6 shadow-2xl" @click.stop>
+              <div class="mb-4 flex items-center justify-between">
+                <h2 class="text-lg font-bold text-gray-800">Slide 内容</h2>
+                <button
+                  class="flex h-7 w-7 items-center justify-center rounded text-gray-400 hover:bg-gray-100 hover:text-gray-600"
+                  @click="showContentView = false"
+                >
+                  <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M18 6L6 18M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+              <div class="max-h-[70vh] overflow-y-auto whitespace-pre-wrap rounded-xl bg-gray-50 p-5 text-sm leading-6 text-gray-700">
+                {{ viewingSlide?.content || '暂无内容' }}
+              </div>
+            </div>
+          </div>
+        </Transition>
+      </Teleport>
 
       <!-- Style Guide Popup -->
       <StyleGuidePopup

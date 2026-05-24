@@ -1,9 +1,13 @@
 import type { Presentation, Slide } from '../../../../shared/src/types';
 import { AppError, ErrorCodes } from '../../types/errors';
+import { ImageRepo } from '../storage/image-repo';
 import { OutlineRepo } from '../storage/outline-repo';
 
 export class SlideService {
-  constructor(private outlineRepo: OutlineRepo) {}
+  constructor(
+    private outlineRepo: OutlineRepo,
+    private imageRepo?: ImageRepo,
+  ) {}
 
   async getPresentationData(slug: string): Promise<{ title: string; style: Presentation['style']; slides: Slide[]; totalCost: number }> {
     const data = await this.outlineRepo.read(slug);
@@ -71,6 +75,30 @@ export class SlideService {
 
     data.slides.splice(index, 1);
     await this.outlineRepo.write(slug, data);
+  }
+
+  async deleteSlideImage(slug: string, sid: string, imageIndex: number): Promise<Slide> {
+    const data = await this.outlineRepo.read(slug);
+    const slide = data.slides.find(s => s.sid === sid);
+    if (!slide) {
+      throw new AppError(ErrorCodes.SLIDE_NOT_FOUND, 404, `Slide "${sid}" not found`);
+    }
+    if (!Number.isInteger(imageIndex) || imageIndex < 0 || imageIndex >= slide.images.length) {
+      throw new AppError(ErrorCodes.INVALID_REQUEST, 400, '图片不存在');
+    }
+
+    const [image] = slide.images.splice(imageIndex, 1);
+    if (slide.images.length === 0) {
+      slide.activeImageIndex = 0;
+    } else if (slide.activeImageIndex >= slide.images.length) {
+      slide.activeImageIndex = slide.images.length - 1;
+    } else if (imageIndex < slide.activeImageIndex) {
+      slide.activeImageIndex -= 1;
+    }
+
+    await this.outlineRepo.write(slug, data);
+    await this.imageRepo?.delete(slug, image.filename).catch(() => {});
+    return slide;
   }
 
   async reorderSlides(slug: string, orderedSids: string[]): Promise<Slide[]> {

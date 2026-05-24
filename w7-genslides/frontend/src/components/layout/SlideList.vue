@@ -14,6 +14,8 @@ const emit = defineEmits<{
   add: []
   delete: [sid: string]
   edit: [sid: string]
+  view: [sid: string]
+  create: [sid: string]
   reorder: [orderedSids: string[]]
 }>()
 
@@ -41,6 +43,12 @@ onUnmounted(() => {
 })
 
 watch(() => props.slides.length, () => nextTick(checkScroll))
+
+watch(() => props.selectedSid, async () => {
+  await nextTick()
+  const el = scrollRef.value?.querySelector('[data-selected="true"]')
+  el?.scrollIntoView({ block: 'nearest' })
+})
 
 function onDragStart(index: number) {
   dragIndex = index
@@ -100,7 +108,8 @@ function onDrop(e: DragEvent, dropIndex: number, slides: Slide[]) {
       draggable="true"
       @select="emit('select', slide.sid)"
       @delete="emit('delete', slide.sid)"
-      @dblclick="emit('edit', slide.sid)"
+      @view="emit('view', slide.sid)"
+      @create="emit('create', slide.sid)"
       @dragstart="onDragStart(index)"
       @dragover="(e: DragEvent) => onDragOver(e, index)"
       @dragleave="onDragLeave"

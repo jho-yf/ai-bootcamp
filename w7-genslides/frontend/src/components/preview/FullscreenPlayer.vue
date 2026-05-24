@@ -6,10 +6,11 @@ import { usePresentationStore } from '../../stores/presentation'
 const props = defineProps<{
   slides: Slide[]
   slug: string
+  visible: boolean
 }>()
 
 const emit = defineEmits<{
-  start: []
+  close: []
 }>()
 
 const presentationStore = usePresentationStore()
@@ -37,10 +38,23 @@ function startPlayback() {
   if (slidesWithImages.value.length === 0) return
   isPlaying.value = true
   playingIndex.value = 0
-  emit('start')
+  restartTimer()
+}
+
+function restartTimer() {
+  if (timer) clearInterval(timer)
   timer = setInterval(() => {
-    playingIndex.value = (playingIndex.value + 1) % slidesWithImages.value.length
+    showNext()
   }, INTERVAL)
+}
+
+function showPrev() {
+  playingIndex.value =
+    (playingIndex.value - 1 + slidesWithImages.value.length) % slidesWithImages.value.length
+}
+
+function showNext() {
+  playingIndex.value = (playingIndex.value + 1) % slidesWithImages.value.length
 }
 
 function stopPlayback() {
@@ -49,11 +63,19 @@ function stopPlayback() {
     clearInterval(timer)
     timer = null
   }
+  emit('close')
 }
 
 function onKeydown(e: KeyboardEvent) {
-  if (e.key === 'Escape' && isPlaying.value) {
+  if (!isPlaying.value) return
+  if (e.key === 'Escape') {
     stopPlayback()
+  } else if (e.key === 'ArrowLeft') {
+    showPrev()
+    restartTimer()
+  } else if (e.key === 'ArrowRight') {
+    showNext()
+    restartTimer()
   }
 }
 
@@ -66,15 +88,20 @@ onUnmounted(() => {
   if (timer) clearInterval(timer)
 })
 
-watch(isPlaying, (val) => {
-  if (val) {
-    document.documentElement.requestFullscreen?.()
-  } else {
-    if (document.fullscreenElement) {
-      document.exitFullscreen?.()
+watch(
+  () => props.visible,
+  (val) => {
+    if (val) {
+      startPlayback()
+    } else if (isPlaying.value) {
+      isPlaying.value = false
+      if (timer) {
+        clearInterval(timer)
+        timer = null
+      }
     }
-  }
-})
+  },
+)
 </script>
 
 <template>
@@ -89,13 +116,13 @@ watch(isPlaying, (val) => {
     >
       <div
         v-if="isPlaying"
-        class="fixed inset-0 z-50 flex items-center justify-center bg-black"
+        class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/95 bg-[radial-gradient(circle_at_center,#1f2937_0%,#020617_70%)] p-4"
         @click="stopPlayback"
       >
         <img
           v-if="currentImageUrl"
           :src="currentImageUrl"
-          class="max-h-full max-w-full object-contain"
+          class="h-full w-full object-contain drop-shadow-2xl"
         />
 
         <div class="absolute bottom-8 left-1/2 -translate-x-1/2 text-white/60 text-sm">
@@ -103,7 +130,7 @@ watch(isPlaying, (val) => {
         </div>
 
         <div class="absolute top-4 right-4 text-white/40 text-sm">
-          按 ESC 退出
+          ← → 切换，ESC 退出
         </div>
       </div>
     </Transition>

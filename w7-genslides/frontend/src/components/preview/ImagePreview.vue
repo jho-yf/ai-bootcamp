@@ -25,12 +25,13 @@ const imageUrl = computed(() => {
 </script>
 
 <template>
-  <div class="flex flex-1 items-center justify-center bg-gray-100 p-4">
+  <div class="flex flex-1 items-center justify-center bg-gray-100 px-3 pt-3 pb-8">
     <div class="relative flex h-full w-full items-center justify-center">
       <img
         v-if="imageUrl"
         :src="imageUrl"
-        class="max-h-full max-w-full rounded-lg object-contain shadow-sm"
+        class="max-h-[96%] max-w-[96%] cursor-pointer rounded-lg object-contain shadow-xl shadow-gray-400/30"
+        @dblclick="emit('dblclick')"
       />
 
       <div
@@ -41,7 +42,10 @@ const imageUrl = computed(() => {
           <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" />
           <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z" />
         </svg>
-        <span class="text-sm">生成图片中...</span>
+        <div class="text-center">
+          <div class="text-sm">生成图片中...</div>
+          <div class="mt-1 text-xs text-gray-400">可以切换到别的 Slide，不会影响当前生成</div>
+        </div>
       </div>
 
       <div

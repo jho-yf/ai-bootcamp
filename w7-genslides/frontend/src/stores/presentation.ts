@@ -160,6 +160,21 @@ export const usePresentationStore = defineStore('presentation', () => {
     }
   }
 
+  async function deleteSlideImage(slug: string, sid: string, imageIndex: number) {
+    error.value = null
+    try {
+      const data = await api.del<{ slide: Slide }>(`/${slug}/slides/${sid}/images/${imageIndex}`)
+      if (presentation.value) {
+        const idx = presentation.value.slides.findIndex((s) => s.sid === sid)
+        if (idx !== -1) {
+          presentation.value.slides[idx] = data.slide
+        }
+      }
+    } catch (e) {
+      error.value = e instanceof Error ? e.message : 'Failed to delete slide image'
+    }
+  }
+
   function generateImage(slug: string, sid: string) {
     if (generatingSids.value.has(sid)) return
     generatingSids.value.add(sid)
@@ -292,6 +307,7 @@ export const usePresentationStore = defineStore('presentation', () => {
     updateSlide,
     deleteSlide,
     reorderSlides,
+    deleteSlideImage,
     generateImage,
     batchGenerate,
     generateStyleCandidates,

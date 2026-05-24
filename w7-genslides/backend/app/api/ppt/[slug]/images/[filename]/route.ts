@@ -15,7 +15,7 @@ export async function GET(
     );
   }
 
-  return new NextResponse(buffer, {
+  return new NextResponse(new Uint8Array(buffer), {
     headers: {
       'Content-Type': 'image/jpeg',
       'Cache-Control': 'max-age=31536000, immutable',
